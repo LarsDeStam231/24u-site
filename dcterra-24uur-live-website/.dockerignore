@@ -1,6 +1,0 @@
-.env
-node_modules
-*.png
-INTERACTIEVE_DEMO.html
-data/*
-!.gitkeep
