@@ -47,7 +47,8 @@ class EventPageData
 
         $links['account'] = route('account.index');
         $links['login'] = route('login');
-        $links['passwordLogin'] = route('password.login');
+        $links['passwordLogin'] = route('login');
+        $links['qrLogin'] = route('qr.login');
         $links['registration'] = route('registration.create');
 
         $accountRoutes = $this->request->user()

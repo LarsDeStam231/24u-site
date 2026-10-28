@@ -14,6 +14,19 @@ class QrAccessTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_qr_login_has_its_own_page_and_links_back_to_password_login(): void
+    {
+        $this->get('/inloggen/qr')->assertOk()->assertViewIs('site')
+            ->assertViewHas('pageData.page.name', 'qr')
+            ->assertViewHas('pageData.qr.mode', 'login')
+            ->assertViewHas('pageData.qr.endpoints.login', url('/inloggen/qr'))
+            ->assertViewHas('pageData.qr.endpoints.loginPage', url('/inloggen/qr'))
+            ->assertViewHas('pageData.links.passwordLogin', url('/inloggen'))
+            ->assertHeader('Referrer-Policy', 'no-referrer');
+
+        $this->assertGuest();
+    }
+
     public function test_registration_has_a_separate_public_vue_page_without_creating_an_account(): void
     {
         $response = $this->get(route('registration.create'));
@@ -71,7 +84,7 @@ class QrAccessTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $user->id, 'login_token_hash' => str_repeat('a', 64)]);
     }
 
-    public function test_activation_issues_three_codes_once_and_stores_only_a_login_hash(): void
+    public function test_activation_issues_only_attendance_and_donation_codes_once_without_logging_in(): void
     {
         Mail::fake();
         $user = User::factory()->approved()->unverified()->create(['role' => 'student', 'email' => 'p12345@example.com']);
@@ -80,23 +93,21 @@ class QrAccessTest extends TestCase
         $this->assertGuest();
 
         $response = $this->postJson(route('qr.activate.store'), ['token' => $token, 'name' => 'Sam'])
-            ->assertOk()->assertJsonStructure(['codes' => ['login' => ['url', 'image'], 'attendance', 'donation']]);
+            ->assertOk()->assertJsonStructure(['codes' => ['attendance' => ['url', 'image'], 'donation']])->assertJsonMissingPath('codes.login');
 
-        $loginToken = $this->tokenFromUrl($response->json('codes.login.url'));
-        $this->assertStringStartsWith(route('students.login').'#token=', $response->json('codes.login.url'));
         $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'Sam', 'student_number' => 'p12345',
-            'login_token_hash' => hash('sha256', $loginToken)]);
+            'login_token_hash' => null]);
         $this->assertNotNull($user->fresh()->email_verified_at);
-        $this->assertAuthenticatedAs($user);
-        $this->assertStringStartsWith('data:image/svg+xml;base64,', $response->json('codes.login.image'));
-        $svg = base64_decode(substr($response->json('codes.login.image'), 26));
+        $this->assertGuest();
+        $this->assertStringStartsWith('data:image/svg+xml;base64,', $response->json('codes.attendance.image'));
+        $svg = base64_decode(substr($response->json('codes.attendance.image'), 26));
         $this->assertStringContainsString('<svg', $svg);
         $this->postJson(route('qr.activate.store'), ['token' => $token, 'name' => 'Other'])
             ->assertUnprocessable();
         $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'Sam']);
     }
 
-    public function test_replacing_a_login_qr_preserves_attendance_and_donation_codes(): void
+    public function test_reactivation_preserves_attendance_and_donation_codes_but_does_not_reenable_old_login_tokens(): void
     {
         Mail::fake();
         $oldToken = str_repeat('a', 64);
@@ -107,7 +118,19 @@ class QrAccessTest extends TestCase
         $this->postJson(route('qr.activate.store'), ['token' => $token, 'name' => 'Sam'])->assertOk();
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'attendance_token' => str_repeat('b', 64), 'donation_token' => str_repeat('c', 64)]);
-        $this->postJson(route('login.store'), ['token' => $oldToken])->assertUnprocessable();
+        $this->postJson(route('login.store'), ['token' => $oldToken])->assertGone();
+    }
+
+    public function test_activation_for_non_students_does_not_issue_a_fixed_login_qr(): void
+    {
+        Mail::fake();
+        $user = User::factory()->approved()->create(['role' => 'gast']);
+        $token = $this->invitationToken($user);
+
+        $response = $this->postJson(route('qr.activate.store'), ['token' => $token, 'name' => 'Sam'])->assertOk();
+
+        $response->assertJsonMissingPath('codes.login')->assertJsonStructure(['codes' => ['attendance']]);
+        $this->assertGuest();
     }
 
     public function test_expired_activations_do_not_issue_credentials(): void
@@ -147,18 +170,20 @@ class QrAccessTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $user->id, 'login_token_hash' => null]);
     }
 
-    public function test_valid_qr_login_starts_a_session_but_a_get_does_not(): void
+    public function test_retired_fixed_qr_tokens_cannot_start_a_session_but_password_login_still_works(): void
     {
         $token = str_repeat('a', 64);
         $user = User::factory()->approved()->create(['login_token_hash' => hash('sha256', $token)]);
-        $this->get(route('login'))->assertOk();
+        $this->get(route('qr.login'))->assertOk();
         $this->assertGuest();
 
-        $this->postJson(route('login.store'), ['token' => $token])->assertOk()->assertJsonPath('redirect', route('account.index'));
+        $this->postJson(route('login.store'), ['token' => $token])->assertGone();
+        $this->assertGuest();
+        $this->postJson(route('password.login.store'), ['email' => $user->email, 'password' => 'password'])->assertOk()->assertJsonPath('redirect', route('account.index'));
 
         $this->assertAuthenticatedAs($user);
         $this->get(route('account.index'))->assertOk()->assertDontSee($user->login_token_hash);
-        $this->postJson(route('logout'))->assertOk();
+        $this->postJson(route('logout'))->assertOk()->assertJsonPath('redirect', url('/inloggen'));
         $this->assertGuest();
     }
 
@@ -174,7 +199,7 @@ class QrAccessTest extends TestCase
         $token = str_repeat('a', 64);
         User::factory()->create(['registration_status' => $status, 'login_token_hash' => hash('sha256', $token)]);
 
-        $this->postJson(route('login.store'), ['token' => $token])->assertUnprocessable();
+        $this->postJson(route('login.store'), ['token' => $token])->assertGone();
 
         $this->assertGuest();
     }
@@ -183,29 +208,30 @@ class QrAccessTest extends TestCase
     {
         $user = User::factory()->approved()->create(['attendance_token' => str_repeat('a', 64), 'donation_token' => str_repeat('b', 64)]);
 
-        $this->postJson(route('login.store'), ['token' => $user->attendance_token])->assertUnprocessable();
-        $this->postJson(route('login.store'), ['token' => $user->donation_token])->assertUnprocessable();
+        $this->postJson(route('login.store'), ['token' => $user->attendance_token])->assertGone();
+        $this->postJson(route('login.store'), ['token' => $user->donation_token])->assertGone();
 
         $this->assertGuest();
     }
 
-    public function test_students_login_refuses_other_roles(): void
+    public function test_legacy_student_qr_login_is_disabled_for_all_roles(): void
     {
         $token = str_repeat('a', 64);
         $user = User::factory()->approved()->create(['role' => 'gast', 'login_token_hash' => hash('sha256', $token)]);
 
-        $this->postJson(route('students.login.store'), ['token' => $token])->assertUnprocessable();
+        $this->postJson(route('students.login.store'), ['token' => $token])->assertGone();
 
         $this->assertGuest();
         $user->forceFill(['role' => 'student'])->save();
-        $this->postJson(route('students.login.store'), ['token' => $token])->assertOk();
-        $this->assertAuthenticatedAs($user);
+        $this->postJson(route('students.login.store'), ['token' => $token])->assertGone();
+        $this->assertGuest();
     }
 
     public function test_replacing_a_login_token_also_blocks_old_sessions(): void
     {
         $user = User::factory()->approved()->create(['login_token_hash' => str_repeat('a', 64)]);
         $this->actingAs($user)->withSession(['qr_fingerprint' => str_repeat('a', 64)]);
+        $this->get(route('account.index'))->assertForbidden();
         $user->forceFill(['login_token_hash' => str_repeat('b', 64)])->save();
 
         $this->get(route('account.index'))->assertForbidden();
@@ -321,7 +347,7 @@ class QrAccessTest extends TestCase
 
         $mail->assertSeeInHtml('24 uur');
         $mail->assertSeeInHtml('#token=example');
-        $mail->assertSeeInText('Bewaar je inlog-QR');
+        $mail->assertSeeInText('Een vaste privé-inlog-QR wordt niet meer uitgegeven.');
     }
 
     public function test_activation_is_refused_if_approval_has_been_withdrawn(): void
@@ -340,7 +366,7 @@ class QrAccessTest extends TestCase
     public function test_login_attempts_with_the_same_token_are_rate_limited(): void
     {
         for ($attempt = 0; $attempt < 10; $attempt++) {
-            $this->postJson(route('login.store'), ['token' => str_repeat('a', 64)])->assertUnprocessable();
+            $this->postJson(route('login.store'), ['token' => str_repeat('a', 64)])->assertGone();
         }
 
         $this->postJson(route('login.store'), ['token' => str_repeat('a', 64)])->assertTooManyRequests();

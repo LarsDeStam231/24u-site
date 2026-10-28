@@ -22,13 +22,22 @@ class PasswordLoginTest extends TestCase
         $this->assertAuthenticatedAs(User::where('email', 'admin@example.com')->firstOrFail());
     }
 
-    public function test_password_login_has_a_separate_public_vue_page(): void
+    public function test_default_login_page_uses_email_and_password_and_links_to_qr_login(): void
     {
-        $this->get(route('password.login'))->assertOk()->assertViewIs('site')
+        $this->get('/inloggen')->assertOk()->assertViewIs('site')
             ->assertViewHas('pageData.page.name', 'password-login')
-            ->assertViewHas('pageData.page.submitUrl', route('password.login.store'))
-            ->assertViewHas('pageData.links.login', route('login'))
+            ->assertViewHas('pageData.page.submitUrl', url('/inloggen'))
+            ->assertViewHas('pageData.page.canonical', url('/inloggen'))
+            ->assertViewHas('pageData.links.login', url('/inloggen'))
+            ->assertViewHas('pageData.links.qrLogin', url('/inloggen/qr'))
             ->assertHeader('Referrer-Policy', 'no-referrer');
+
+        $this->assertGuest();
+    }
+
+    public function test_old_password_login_page_redirects_to_default_login(): void
+    {
+        $this->get('/inloggen/wachtwoord')->assertRedirect('/inloggen');
 
         $this->assertGuest();
     }
@@ -39,7 +48,7 @@ class PasswordLoginTest extends TestCase
         $this->withSession(['qr_fingerprint' => 'old-qr-session']);
         $oldSessionId = session()->getId();
 
-        $this->postJson(route('password.login.store'), ['email' => 'ADMIN@example.com', 'password' => 'test-password'])
+        $this->postJson('/inloggen', ['email' => 'ADMIN@example.com', 'password' => 'test-password'])
             ->assertOk()->assertJsonPath('redirect', route('account.index'))->assertSessionMissing('qr_fingerprint');
 
         $this->assertAuthenticatedAs($user);

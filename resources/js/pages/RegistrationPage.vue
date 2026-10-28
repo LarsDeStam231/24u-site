@@ -68,7 +68,7 @@ async function register() {
                         <ol class="grid list-inside list-decimal gap-2">
                             <li>Een beheerder controleert je aanvraag en wijst je een rol toe.</li>
                             <li>Na goedkeuring ontvang je een activatielink per e-mail.</li>
-                            <li>Je activeert je QR-codes en kunt daarna inloggen.</li>
+                            <li>Je activeert je QR-codes en stelt via de inlogpagina een wachtwoord in. Daarna kun je vanuit je account een passkey koppelen.</li>
                         </ol>
                     </div>
                     <p>Heb je al een account? <a :href="links.login" class="font-bold underline">Inloggen</a></p>

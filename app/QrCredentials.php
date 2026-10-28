@@ -40,25 +40,25 @@ class QrCredentials
                 && hash_equals($invitation['hash'], hash('sha256', $secret))
                 && $invitation['email'] === $user->email, 422, 'Deze activatielink is ongeldig of verlopen.');
 
-            $loginToken = Str::random(64);
-            DB::transaction(function () use ($user, $name, $loginToken): void {
+            DB::transaction(function () use ($user, $name): void {
                 $user->name = $name;
                 $user->email_verified_at ??= now();
-                $user->login_token_hash = hash('sha256', $loginToken);
-                $user->attendance_token ??= Str::random(64);
-                $user->donation_token ??= Str::random(64);
-                if ($user->role === 'student') {
-                    $user->student_number = Str::before($user->email, '@');
-                }
-                $user->save();
+                $this->ensurePublicCodes($user);
             });
             Cache::forget('qr:activation:'.$id);
 
-            return ['user' => $user, 'codes' => [
-                'login' => $this->images->forUrl(route($user->role === 'student' ? 'students.login' : 'login').'#token='.$loginToken),
-                ...$this->publicCodes($user),
-            ]];
+            return ['user' => $user, 'codes' => $this->publicCodes($user)];
         });
+    }
+
+    public function ensurePublicCodes(User $user): void
+    {
+        $user->attendance_token ??= Str::random(64);
+        if ($user->role === 'student') {
+            $user->donation_token ??= Str::random(64);
+            $user->student_number = Str::before($user->email, '@');
+        }
+        $user->save();
     }
 
     /** @return array<string, array{url: string, image: string}> */
