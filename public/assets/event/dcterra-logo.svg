@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 118" role="img" aria-labelledby="title">
+  <title id="title">DCTerra</title>
+  <path d="M15 0h159v118H15C6.7 118 0 111.3 0 103V15C0 6.7 6.7 0 15 0Z" fill="#DB0033"/>
+  <path d="M174 0h237c38 0 69 31 69 69v49H174V0Z" fill="#242323"/>
+  <text x="12" y="86" fill="white" font-family="DejaVu Sans Condensed,Arial,sans-serif" font-size="76" font-weight="900" letter-spacing="-6" textLength="152" lengthAdjust="spacingAndGlyphs">D·C</text>
+  <text x="190" y="87" fill="white" font-family="DejaVu Sans Condensed,Arial,sans-serif" font-size="75" font-weight="900" letter-spacing="0" textLength="267" lengthAdjust="spacingAndGlyphs">TERRA</text>
+</svg>

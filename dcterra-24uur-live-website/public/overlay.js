@@ -1,0 +1,5 @@
+const demo=new URLSearchParams(location.search).has('preview');
+if(new URLSearchParams(location.search).get('style')==='compact')document.getElementById('overlay').classList.add('compact');
+function euro(cents){return new Intl.NumberFormat('nl-NL',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(cents/100)}
+async function refresh(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)return;const s=await r.json();if(demo){s.raisedCents=347500;s.nextMilestoneCents=350000;document.getElementById('demo').hidden=false;}const pct=Math.min(100,(s.raisedCents/s.goalCents)*100);document.getElementById('total').textContent=euro(s.raisedCents);document.getElementById('goal').textContent='/ '+euro(s.goalCents);document.getElementById('bar').style.width=pct+'%';document.getElementById('percent').textContent=pct.toFixed(1).replace('.',',')+'% opgehaald';document.getElementById('next').textContent=s.nextMilestoneCents?'Nog '+euro(Math.max(0,s.nextMilestoneCents-s.raisedCents))+' tot volgende challenge':'Alle challenges ontgrendeld!';}catch(e){console.error('Overlay:',e.message)}}
+refresh();setInterval(refresh,5000);
