@@ -32,6 +32,63 @@ class TrustedProxyTest extends TestCase
             ->assertViewHas('pageData.links.account', 'https://tunnel.example/account');
     }
 
+    #[DataProvider('localProxies')]
+    public function test_local_proxy_uses_the_configured_public_host_for_assets_and_login_links(string $proxy): void
+    {
+        config(['app.url' => 'https://tunnel.example']);
+        $this->withoutVite();
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => $proxy])->withHeaders([
+            'X-Forwarded-Proto' => 'https',
+            'X-Forwarded-Host' => 'tunnel.example',
+        ])->get('http://localhost:8000/inloggen');
+
+        $response->assertOk()
+            ->assertViewHas('pageData.page.optionsUrl', 'https://tunnel.example/inloggen/opties')
+            ->assertViewHas('pageData.links.account', 'https://tunnel.example/account')
+            ->assertSee('href="https://tunnel.example/assets/event/favicon.svg"', false)
+            ->assertDontSee('https://localhost:8000', false);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function unconfiguredForwardedHosts(): array
+    {
+        return [
+            'different domain' => ['attacker.example'],
+            'subdomain' => ['sub.tunnel.example'],
+            'domain suffix' => ['tunnel.example.attacker.example'],
+            'unexpected port' => ['tunnel.example:444'],
+            'forwarded host chain' => ['attacker.example, tunnel.example'],
+        ];
+    }
+
+    #[DataProvider('unconfiguredForwardedHosts')]
+    public function test_local_proxy_ignores_forwarded_hosts_other_than_the_configured_public_host(string $forwardedHost): void
+    {
+        config(['app.url' => 'https://tunnel.example']);
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders([
+            'X-Forwarded-Proto' => 'https',
+            'X-Forwarded-Host' => $forwardedHost,
+        ])->get('http://localhost:8000/inloggen');
+
+        $response->assertOk()
+            ->assertViewHas('pageData.page.optionsUrl', 'https://localhost:8000/inloggen/opties');
+    }
+
+    public function test_untrusted_clients_cannot_supply_the_configured_public_host_with_forwarded_headers(): void
+    {
+        config(['app.url' => 'https://tunnel.example']);
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])->withHeaders([
+            'X-Forwarded-Proto' => 'https',
+            'X-Forwarded-Host' => 'tunnel.example',
+        ])->get('http://localhost:8000/inloggen');
+
+        $response->assertOk()
+            ->assertViewHas('pageData.page.optionsUrl', 'http://localhost:8000/inloggen/opties');
+    }
+
     public function test_untrusted_clients_cannot_change_the_protocol_with_forwarded_headers(): void
     {
         $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.10'])->withHeaders([

@@ -33,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
             ->action('Wachtwoord instellen', rtrim(config('app.url'), '/').route('password.reset', [], false).'#'.http_build_query(['token' => $token, 'email' => $user->email]))
             ->line('Deze link werkt één keer en is '.config('auth.passwords.users.expire').' minuten geldig. Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren.'));
         Gate::define('manage-qr-accounts', fn (User $user): bool => $user->isApproved() && $user->role === 'admin');
+        Gate::define('manage-event-content', fn (User $user): bool => $user->isApproved()
+            && in_array($user->role, ['admin', 'organisatie'], true));
+        Gate::define('manage-challenge-ladder', fn (User $user): bool => $user->isApproved() && $user->role === 'admin');
         Gate::define('scan-attendance', fn (User $user): bool => $user->isApproved()
             && in_array($user->role, ['admin', 'organisatie', 'vrijwilliger'], true));
 

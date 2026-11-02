@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import PageHeading from '../components/layout/PageHeading.vue';
 import ActionButton from '../components/ui/ActionButton.vue';
+import ContentManagement from '../components/ContentManagement.vue';
 import QrCards from '../components/ui/QrCards.vue';
 import LoginForm from '../components/ui/LoginForm.vue';
 import PasskeyPhone from '../components/ui/PasskeyPhone.vue';
@@ -33,6 +34,7 @@ const accounts = ref(null);
 const selected = ref([]);
 const scanResult = ref(null);
 const hasCodes = computed(() => Object.keys(codes.value).length > 0);
+const hasShareableCodes = computed(() => Object.keys(props.qr.shareableCodes || {}).length > 0);
 const inputClass = 'w-full rounded border border-slate-300 bg-white p-3 text-slate-950';
 const roles = ['student', 'organisatie', 'vrijwilliger', 'donateur', 'gast', 'admin'];
 
@@ -192,8 +194,25 @@ onMounted(() => {
                     <ActionButton variant="outline" :disabled="busy" @click="logout">Uitloggen</ActionButton>
                 </div>
             </section>
-            <QrCards v-if="hasCodes" :codes="codes" />
-            <p v-else>Activeer eerst je QR-codes via de link in je e-mail.</p>
+            <template v-if="hasShareableCodes">
+                <section class="grid gap-4" aria-labelledby="shareable-qr-title">
+                    <div class="grid gap-2">
+                        <h2 id="shareable-qr-title" class="text-2xl">QR-codes om te delen</h2>
+                        <p>Deze twee QR-codes mag je openbaar delen. Ze geven geen toegang tot jouw account.</p>
+                    </div>
+                    <QrCards :codes="qr.shareableCodes" />
+                    <p class="text-sm text-slate-600">Donaties gaan rechtstreeks via de stichting en worden op deze website nog niet automatisch meegeteld of aan deelnemers gekoppeld.</p>
+                </section>
+                <details>
+                    <summary class="cursor-pointer text-xl font-bold">Aanwezigheid</summary>
+                    <QrCards v-if="codes.attendance" :codes="{ attendance: codes.attendance }" class="max-w-xl pt-4" />
+                    <p v-else class="pt-4">Je aanwezigheids-QR wordt beschikbaar na activering via de link in je e-mail. De twee deelbare QR-codes hierboven kun je al gebruiken.</p>
+                </details>
+            </template>
+            <template v-else>
+                <QrCards v-if="hasCodes" :codes="codes" />
+                <p v-else>Activeer eerst je QR-codes via de link in je e-mail.</p>
+            </template>
             <section v-if="qr.account.role === 'student'" class="content-card grid gap-3 p-6">
                 <h2 class="text-2xl">Mijn donaties en ranking</h2>
                 <p>Nog niet beschikbaar: het goede doel ontvangt betalingen via zijn eigen betaalpagina. Zolang betaalbevestigingen ontbreken, tonen we geen onbevestigde bedragen of ranglijst.</p>
@@ -230,6 +249,8 @@ onMounted(() => {
                 </div>
             </section>
         </template>
+
+        <ContentManagement v-if="qr.mode === 'account' && qr.canManageContent" :endpoints="endpoints" :can-manage-challenge-ladder="qr.canManageChallengeLadder" />
 
         <section v-if="qr.mode === 'donation'" class="content-card mx-auto grid w-full max-w-2xl gap-5 p-6">
             <h2 class="text-3xl">Steun de actie van {{ qr.studentName }}</h2>

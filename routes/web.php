@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AboutController;
+use App\Http\Controllers\AccountContentController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\DonationController;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/livestream', [LivestreamController::class, 'index'])->name('livestream.index');
 Route::get('/doneren', [DonationController::class, 'index'])->name('donations.index');
+Route::get('/donations/total', [DonationController::class, 'total'])->name('donations.total');
 Route::get('/challenges', [ChallengeController::class, 'index'])->name('challenges.index');
 Route::get('/programma', [ProgramController::class, 'index'])->name('program.index');
 Route::get('/sponsoren', [SponsorController::class, 'index'])->name('sponsors.index');
@@ -65,6 +67,16 @@ Route::middleware(ProtectQrResponses::class)->group(function (): void {
 
     Route::middleware(['auth', EnsureApprovedAccount::class])->group(function (): void {
         Route::get('/account', [QrAccountController::class, 'index'])->name('account.index');
+        Route::get('/account/content', [AccountContentController::class, 'index'])->name('account.content.index');
+        Route::post('/account/content/program', [AccountContentController::class, 'storeProgramItem'])->name('account.content.program.store');
+        Route::patch('/account/content/program/{programItem}', [AccountContentController::class, 'updateProgramItem'])->name('account.content.program.update');
+        Route::delete('/account/content/program/{programItem}', [AccountContentController::class, 'destroyProgramItem'])->name('account.content.program.destroy');
+        Route::post('/account/content/challenges', [AccountContentController::class, 'storeChallenge'])->name('account.content.challenges.store');
+        Route::patch('/account/content/challenges/{challenge}', [AccountContentController::class, 'updateChallenge'])->name('account.content.challenges.update');
+        Route::delete('/account/content/challenges/{challenge}', [AccountContentController::class, 'destroyChallenge'])->name('account.content.challenges.destroy');
+        Route::post('/account/content/sponsors', [AccountContentController::class, 'storeSponsor'])->name('account.content.sponsors.store');
+        Route::patch('/account/content/sponsors/{sponsor}', [AccountContentController::class, 'updateSponsor'])->name('account.content.sponsors.update');
+        Route::delete('/account/content/sponsors/{sponsor}', [AccountContentController::class, 'destroySponsor'])->name('account.content.sponsors.destroy');
         Route::get('/account/passkeys', [PasskeyController::class, 'index'])->name('passkeys.index');
         Route::post('/account/passkeys', [PasskeyController::class, 'store'])->middleware('throttle:10,1')->name('passkeys.store');
         Route::delete('/account/passkeys/{passkey}', [PasskeyController::class, 'destroy'])->middleware('throttle:password-login')->name('passkeys.destroy');

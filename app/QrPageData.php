@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class QrPageData
@@ -24,6 +25,16 @@ class QrPageData
             'account' => route('account.index'), 'logout' => route('logout'),
             'attendance' => route('attendance.index'), 'attendanceStore' => route('attendance.store'),
             'requests' => route('account.requests'), 'inviteSelected' => route('account.invite-selected'),
+            'content' => route('account.content.index'),
+            'programStore' => route('account.content.program.store'),
+            'programUpdate' => route('account.content.program.update', ['programItem' => '__PROGRAM_ITEM__']),
+            'programDelete' => route('account.content.program.destroy', ['programItem' => '__PROGRAM_ITEM__']),
+            'challengeStore' => route('account.content.challenges.store'),
+            'challengeUpdate' => route('account.content.challenges.update', ['challenge' => '__CHALLENGE__']),
+            'challengeDelete' => route('account.content.challenges.destroy', ['challenge' => '__CHALLENGE__']),
+            'sponsorStore' => route('account.content.sponsors.store'),
+            'sponsorUpdate' => route('account.content.sponsors.update', ['sponsor' => '__SPONSOR__']),
+            'sponsorDelete' => route('account.content.sponsors.destroy', ['sponsor' => '__SPONSOR__']),
             'studentsLoginPage' => route('students.login'),
             'loginOptions' => route('login.options'), 'passwordMail' => route('password.email'),
             'passwordLogin' => route('password.login.store'),
@@ -32,7 +43,8 @@ class QrPageData
             'passkeys' => route('passkeys.index'), 'passkeyCreate' => route('passkeys.store'),
             'registrationAuthorize' => route('passkeys.registration.authorize'),
             'registrationOptions' => route('passkeys.registration.options'), 'registrationStore' => route('passkeys.registration.store'),
-        ], ...$data];
+        ], 'canManageContent' => Gate::allows('manage-event-content'),
+            'canManageChallengeLadder' => Gate::allows('manage-challenge-ladder'), ...$data];
 
         return view('site', compact('pageData'));
     }

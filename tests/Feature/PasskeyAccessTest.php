@@ -44,6 +44,23 @@ class PasskeyAccessTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_local_proxy_can_start_passkey_registration_for_the_configured_public_domain(): void
+    {
+        config(['app.url' => 'https://tunnel.example', 'passkeys.relying_party.id' => 'tunnel.example']);
+        $user = User::factory()->approved()->create(['password' => 'correct-password']);
+        $qr = $this->registrationQr($user);
+        $this->authorizeRegistration($user, $qr);
+
+        $response = $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])->withHeaders([
+            'X-Forwarded-Proto' => 'https',
+            'X-Forwarded-Host' => 'tunnel.example',
+        ])->postJson('http://localhost:8000/passkey-koppelen/opties', ['token' => $qr['token']]);
+
+        $response->assertOk()
+            ->assertJsonPath('rp.id', 'tunnel.example')
+            ->assertJsonPath('authenticatorSelection.userVerification', 'required');
+    }
+
     public function test_a_real_registration_stores_the_public_credential_once_and_hides_it_from_settings(): void
     {
         Notification::fake();

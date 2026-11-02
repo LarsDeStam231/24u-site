@@ -2,13 +2,19 @@
 
 namespace App;
 
-use App\Models\Donation;
+use App\Models\FundraisingChallenge;
+use App\Models\ProgramItem;
 use App\Models\Sponsor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class EventPageData
 {
-    public function __construct(private Request $request) {}
+    public function __construct(
+        private Request $request,
+        private ChallengeLadder $challengeLadder,
+        private FundraisingTotal $fundraisingTotal,
+    ) {}
 
     /**
      * @return array{page: array<string, string>, event: array<string, mixed>, navigation: list<array{label: string, href: string, route: string}>, accountNavigation: list<array{label: string, href: string, route: string}>, socials: list<array{label: string, icon: string, href: string}>, links: array<string, string>, currentRoute: string}
@@ -19,10 +25,43 @@ class EventPageData
         $page = $pages[$pageName];
         $event = config('event.event');
 
+        if (Schema::hasTable('program_items')) {
+            $programItems = ProgramItem::query()->orderBy('sort_order')->orderBy('id')->get();
+
+            if ($programItems->isNotEmpty()) {
+                $event['schedule'] = $programItems->map(fn (ProgramItem $item): array => [
+                    'id' => $item->slug,
+                    'date' => $item->event_date->format('Y-m-d'),
+                    'time' => $item->time_range,
+                    'title' => $item->title,
+                    'description' => $item->description,
+                    'responsible' => $item->responsible,
+                    'presenter' => $item->presenter,
+                    'production' => $item->production,
+                    'materials' => $item->materials,
+                    'donationChallenge' => $item->donation_challenge,
+                ])->all();
+            }
+        }
+
+        if (Schema::hasTable('fundraising_challenges')) {
+            $fundraisingChallenges = FundraisingChallenge::query()->orderBy('amount_cents')->get();
+
+            if ($fundraisingChallenges->isNotEmpty()) {
+                $event['challenges'] = $fundraisingChallenges->map(fn (FundraisingChallenge $challenge): array => [
+                    'amountCents' => $challenge->amount_cents,
+                    'name' => $challenge->name,
+                    'description' => $challenge->description,
+                ])->all();
+            }
+        }
+
+        $event['challenges'] = $this->challengeLadder->build($event['challenges']);
+        $event['fundraising']['raisedCents'] = $this->fundraisingTotal->currentRaisedCents();
+
         $event['images'] = array_map(fn (string $path): string => asset($path), $event['images']);
 
-        if (! $event['fundraising']['isPreview']) {
-            $event['fundraising']['raisedCents'] = Donation::completedAmountCents();
+        if (Schema::hasTable('sponsor')) {
             $sponsors = Sponsor::query()
                 ->orderBy('company_name')
                 ->orderBy('id')
@@ -50,6 +89,7 @@ class EventPageData
         $links['passwordLogin'] = route('login');
         $links['qrLogin'] = route('qr.login');
         $links['registration'] = route('registration.create');
+        $links['donationTotal'] = route('donations.total');
 
         $accountRoutes = $this->request->user()
             ? ['account.index' => 'Mijn account']
