@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\QrCredentials;
-use App\QrImage;
 use App\QrPageData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,17 +15,14 @@ use Illuminate\View\View;
 
 class QrAccountController extends Controller
 {
-    public function index(Request $request, QrPageData $pages, QrCredentials $credentials, QrImage $images): View
+    public function index(Request $request, QrPageData $pages, QrCredentials $credentials): View
     {
         $user = $request->user();
         $codes = $credentials->publicCodes($user);
         $shareableCodes = [];
 
         if (in_array($user->role, ['student', 'vrijwilliger', 'organisatie'], true)) {
-            $shareableCodes = [
-                'website' => $images->forUrl(route('home')),
-                'foundationDonation' => $images->forUrl(config('event.event.foundation.donateUrl')),
-            ];
+            $shareableCodes = $credentials->shareableCodes();
             unset($codes['donation']);
         }
 

@@ -41,7 +41,7 @@ async function save() {
             <section class="content-card mx-auto grid max-w-xl gap-5 p-6 sm:p-8">
                 <p v-if="error" role="alert" class="rounded border border-red-300 bg-red-50 p-4 text-red-950">{{ error }}</p>
                 <form v-if="token" class="grid gap-5" @submit.prevent="save">
-                    <label class="grid gap-2 font-bold">E-mailadres<input v-model="email" :class="inputClass" type="email" required readonly autocomplete="username" /></label>
+                    <label class="grid gap-2 font-bold">E-mailadres<input v-model="email" :class="inputClass" type="email" autocomplete="username" /></label>
                     <label class="grid gap-2 font-bold">Openbare naam (bij eerste instelling)<input v-model="name" :class="inputClass" maxlength="120" autocomplete="name" /></label>
                     <label class="grid gap-2 font-bold">Nieuw wachtwoord<input v-model="password" :class="inputClass" type="password" required minlength="12" maxlength="72" autocomplete="new-password" /></label>
                     <label class="grid gap-2 font-bold">Herhaal wachtwoord<input v-model="confirmation" :class="inputClass" type="password" required minlength="12" maxlength="72" autocomplete="new-password" /></label>
