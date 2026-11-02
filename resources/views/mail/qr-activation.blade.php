@@ -8,8 +8,7 @@ Deze link is 24 uur geldig en kan één keer worden gebruikt.
 Activeer mijn QR-codes
 </x-mail::button>
 
-Bewaar je inlog-QR privé: deze geeft toegang tot jouw account. Je krijgt de inlog-QR één keer te zien.
-Gebruik je deze link om een verloren inlog-QR te vervangen? Dan vervalt je oude inlog-QR pas na de bevestiging.
+Je logt in met een wachtwoord of een eerder gekoppelde passkey. Een vaste privé-inlog-QR wordt niet meer uitgegeven.
 
 Heb je dit niet aangevraagd? Open de link dan niet en neem contact op met de organisatie.
 

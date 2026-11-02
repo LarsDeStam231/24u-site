@@ -8,13 +8,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\LaravelPasskeys\Models\Concerns\HasPasskeys;
+use Spatie\LaravelPasskeys\Models\Concerns\InteractsWithPasskeys;
 
-class User extends Authenticatable
+class User extends Authenticatable implements HasPasskeys
 {
     public const ROLES = ['admin', 'student', 'organisatie', 'vrijwilliger', 'donateur', 'gast'];
 
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, InteractsWithPasskeys, Notifiable;
+
+    public function getPasskeyDisplayName(): string
+    {
+        return $this->name ?: $this->email;
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -49,6 +56,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'qr_codes_emailed_at' => 'datetime',
             'password' => 'hashed',
             'is_present' => 'boolean',
         ];

@@ -7,7 +7,6 @@ use App\QrCredentials;
 use App\QrPageData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -25,11 +24,8 @@ class QrActivationController extends Controller
             'name' => ['required', 'string', 'max:120', 'not_regex:/[<>]/'],
         ]);
         $result = $credentials->activate($data['token'], trim($data['name']));
-        Auth::login($result['user']);
-        $request->session()->regenerate();
-        $request->session()->put('qr_fingerprint', $result['user']->login_token_hash);
 
-        return response()->json(['codes' => $result['codes'], 'accountUrl' => route('account.index')]);
+        return response()->json(['codes' => $result['codes'], 'accountUrl' => route('login')]);
     }
 
     public function invite(Request $request, QrCredentials $credentials): JsonResponse

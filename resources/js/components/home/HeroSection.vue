@@ -8,6 +8,8 @@ defineProps({
     event: { type: Object, required: true },
     links: { type: Object, required: true },
 });
+
+const emit = defineEmits(['raisedCentsUpdated']);
 </script>
 
 <template>
@@ -21,7 +23,7 @@ defineProps({
                 <EventDetails :starts-at="event.startsAt" :ends-at="event.endsAt" :location="event.location" />
             </div>
             <div class="hero-fundraising">
-                <DonationCounter :fundraising="event.fundraising" :challenges="event.challenges" />
+                <DonationCounter :fundraising="event.fundraising" :challenges="event.challenges" :endpoint="links.donationTotal" @raised-cents-updated="emit('raisedCentsUpdated', $event)" />
             </div>
             <FoundationLogo :foundation="event.foundation" :image="event.images.foundation" class="hero-foundation" />
             <div class="hero-actions">

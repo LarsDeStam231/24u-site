@@ -6,7 +6,7 @@ defineProps({
 </script>
 
 <template>
-    <section class="page-heading" aria-labelledby="page-title">
+    <section class="page-heading" :class="{ 'page-heading--challenges': page.name === 'challenges', 'page-heading--program': page.name === 'program' }" aria-labelledby="page-title">
         <img class="hero-backdrop" :src="event.images.hero" alt="" decoding="async">
         <div class="page-container">
             <p class="eyebrow">{{ event.name }} {{ event.year }}</p>

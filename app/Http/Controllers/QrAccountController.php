@@ -18,14 +18,23 @@ class QrAccountController extends Controller
     public function index(Request $request, QrPageData $pages, QrCredentials $credentials): View
     {
         $user = $request->user();
+        $codes = $credentials->publicCodes($user);
+        $shareableCodes = [];
+
+        if (in_array($user->role, ['student', 'vrijwilliger', 'organisatie'], true)) {
+            $shareableCodes = $credentials->shareableCodes();
+            unset($codes['donation']);
+        }
 
         return $pages->render('account', 'Mijn account', [
             'account' => ['name' => $user->name, 'email' => $user->email, 'role' => $user->role,
                 'isPresent' => $user->is_present, 'studentNumber' => $user->student_number],
-            'codes' => $credentials->publicCodes($user),
+            'codes' => $codes,
+            'shareableCodes' => $shareableCodes,
             'history' => DB::table('attendance_logs')->where('user_id', $user->id)->orderByDesc('id')
                 ->limit(50)->get(['action', 'created_at'])->all(),
-            'canManage' => Gate::allows('manage-qr-accounts'), 'canScan' => Gate::allows('scan-attendance'),
+            'canManage' => Gate::allows('manage-qr-accounts'),
+            'canScan' => Gate::allows('scan-attendance'),
         ]);
     }
 
