@@ -21,8 +21,10 @@ class QrAccountController extends Controller
 
         return $pages->render('account', 'Mijn account', [
             'account' => ['name' => $user->name, 'email' => $user->email, 'role' => $user->role,
-                'isPresent' => $user->is_present, 'studentNumber' => $user->student_number],
-            'codes' => $credentials->publicCodes($user),
+                'isPresent' => $user->is_present, 'studentNumber' => $user->student_number,
+                'discordCode' => $credentials->ensureDiscordCode($user), 'discordLinked' => $user->discord_user_id !== null],
+            'codes' => $codes,
+            'shareableCodes' => $shareableCodes,
             'history' => DB::table('attendance_logs')->where('user_id', $user->id)->orderByDesc('id')
                 ->limit(50)->get(['action', 'created_at'])->all(),
             'canManage' => Gate::allows('manage-qr-accounts'), 'canScan' => Gate::allows('scan-attendance'),

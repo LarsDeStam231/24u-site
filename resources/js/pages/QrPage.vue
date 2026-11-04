@@ -274,6 +274,7 @@ onUnmounted(() => {
                 <h2 class="text-2xl">Welkom, {{ qr.account.name || 'deelnemer' }}</h2>
                 <p>{{ qr.account.email }} · {{ qr.account.role }}</p>
                 <p v-if="qr.account.studentNumber">Studentnummer: {{ qr.account.studentNumber }}</p>
+                <p v-if="qr.account.discordCode">Discord-code: <strong class="font-mono tracking-widest">{{ qr.account.discordCode }}</strong> <span class="text-sm text-slate-600">{{ qr.account.discordLinked ? '(gekoppeld)' : '(stuur deze naar de bot op onze Discord-server)' }}</span></p>
                 <p>Aanwezigheid: <strong>{{ qr.account.isPresent ? 'aanwezig' : 'afwezig' }}</strong></p>
                 <div class="flex flex-wrap gap-3">
                     <ActionButton v-if="qr.canScan" :href="endpoints.attendance">Aanwezigheid registreren</ActionButton>

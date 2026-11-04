@@ -61,6 +61,77 @@ class QrCredentials
         });
     }
 
+    public function ensurePublicCodes(User $user): void
+    {
+        $user->attendance_token ??= Str::random(64);
+        if ($user->role === 'student') {
+            $user->donation_token ??= Str::random(64);
+            $user->student_number = Str::before($user->email, '@');
+        }
+        $user->save();
+    }
+
+    /**
+     * Give the user a unique, easy to type code to verify themselves with the Discord bot.
+     */
+    public function ensureDiscordCode(User $user): string
+    {
+        while ($user->discord_code === null) {
+            $code = Str::upper(Str::password(8, letters: true, numbers: true, symbols: false, spaces: false));
+            $code = strtr($code, ['0' => '2', 'O' => 'P', '1' => '3', 'I' => 'J', 'L' => 'K']);
+
+            if (! User::query()->where('discord_code', $code)->exists()) {
+                $user->discord_code = $code;
+                $user->save();
+            }
+        }
+
+        return $user->discord_code;
+    }
+
+    public function emailShareableCodesOnce(User $user): void
+    {
+        if ($user->qr_codes_emailed_at) {
+            return;
+        }
+
+        Cache::lock('qr:welcome-mail:'.$user->id, 120)->get(function () use ($user): void {
+            $user = $user->fresh();
+            if (! $user || ! $user->isApproved() || ! $user->password || $user->qr_codes_emailed_at) {
+                return;
+            }
+
+            $codes = [];
+            foreach ($this->shareableCodeUrls() as $key => $url) {
+                $codes[$key] = ['url' => $url, 'image' => $this->images->pngForUrl($url)];
+            }
+
+            Mail::to($user->email)->send(new ShareableQrCodesMail($user->name, $codes, $this->ensureDiscordCode($user)));
+            $user->qr_codes_emailed_at = now();
+            $user->save();
+        });
+    }
+
+    /** @return array<string, array{url: string, image: string}> */
+    public function shareableCodes(): array
+    {
+        $codes = [];
+        foreach ($this->shareableCodeUrls() as $key => $url) {
+            $codes[$key] = $this->images->forUrl($url);
+        }
+
+        return $codes;
+    }
+
+    /** @return array{website: string, foundationDonation: string} */
+    private function shareableCodeUrls(): array
+    {
+        return [
+            'website' => rtrim(rtrim(config('app.url'), '/').route('home', [], false), '/'),
+            'foundationDonation' => config('event.event.foundation.donateUrl'),
+        ];
+    }
+
     /** @return array<string, array{url: string, image: string}> */
     public function publicCodes(User $user): array
     {
