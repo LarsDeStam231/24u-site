@@ -24,7 +24,7 @@ class PasskeyChanged extends Notification
             ->from(config('mail.from.address'), $brandName)
             ->subject('Online sleutel '.$this->change.' — '.$brandName)
             ->greeting('Hallo!')
-            ->line('Er is een online sleutel aangemaakt '.$this->change.' '.$preposition.' jouw account: '.$this->name.'.')
+            ->line('Er is een online sleutel '.$this->change.' '.$preposition.' jouw account: '.$this->name.'.')
             ->action('Online sleutels beheren', route('passkeys.index'))
             ->line('Heb je dit niet zelf gedaan? Wijzig je wachtwoord en verwijder onbekende online sleutels.')
             ->salutation('Met vriendelijke groet,')
