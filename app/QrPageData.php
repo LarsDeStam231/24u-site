@@ -23,6 +23,7 @@ class QrPageData
             'pairPage' => route('qr.pair'), 'pairCreate' => route('qr.pair.store'),
             'pairApprove' => route('qr.pair.update'), 'pairConsume' => route('qr.pair.consume'),
             'account' => route('account.index'), 'logout' => route('logout'),
+            'personalDonationTotal' => route('account.donations.total'),
             'attendance' => route('attendance.index'), 'attendanceStore' => route('attendance.store'),
             'requests' => route('account.requests'), 'inviteSelected' => route('account.invite-selected'),
             'content' => route('account.content.index'),

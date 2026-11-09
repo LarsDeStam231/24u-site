@@ -468,6 +468,26 @@
         color: #ff758e;
     }
 
+    .counter-goal-status {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-block-start: 1rem;
+        font-size: 0.9em;
+    }
+
+    .donation-counter--goal-reached {
+        border-color: #46b66c;
+    }
+
+    .donation-counter--goal-reached .progress-track > span {
+        background: linear-gradient(90deg, #168438, #46b66c);
+    }
+
+    .donation-counter--goal-reached :is(.counter-percentage > span, .counter-goal-status) {
+        color: #86efac;
+    }
+
     .next-challenge {
         display: flex;
         align-items: center;
@@ -2044,5 +2064,209 @@
         .action-button, .progress-track > span {
             transition: none;
         }
+    }
+}
+
+@layer components {
+    .account-dashboard {
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .account-dashboard :is(h1, h2, h3) {
+        font-family: var(--font-sans);
+        font-weight: 650;
+        line-height: 1.35;
+        letter-spacing: -0.025em;
+        text-transform: none;
+    }
+
+    .account-dashboard .counter-heading h2 {
+        font-weight: 800;
+        line-height: 1.12;
+        letter-spacing: normal;
+        text-transform: uppercase;
+    }
+
+    .account-title {
+        font-size: clamp(1.5rem, 2.4vw, 2rem);
+    }
+
+    .account-eyebrow {
+        color: #687386;
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .account-muted {
+        color: #687386;
+        font-size: 0.8125rem;
+        line-height: 1.65;
+    }
+
+    .account-card {
+        min-inline-size: 0;
+        padding: clamp(1rem, 2vw, 1.5rem);
+        border: 1px solid #e1e6ed;
+        border-radius: 0.9rem;
+        background: white;
+        box-shadow: 0 3px 14px #172a3e03;
+    }
+
+    .account-card h2 {
+        font-size: 1.0625rem;
+    }
+
+    .account-card h3 {
+        font-size: 0.9375rem;
+    }
+
+    .account-dashboard .action-button {
+        min-block-size: 2.75rem;
+        padding: 0.7rem 0.9rem;
+        border-radius: 0.55rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.4;
+    }
+
+    .account-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem;
+        border: 1px solid #e1e6ed;
+        border-radius: 0.8rem;
+        background: #e9edf2;
+    }
+
+    .account-tab {
+        min-block-size: 2.75rem;
+        padding: 0.65rem 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.55rem;
+        color: #586477;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: start;
+    }
+
+    .account-tab:hover {
+        color: #152235;
+        background: #ffffff70;
+    }
+
+    .account-tab[aria-selected='true'] {
+        border-color: #dde3eb;
+        background: white;
+        color: #152235;
+        box-shadow: 0 2px 5px #172a3e0a;
+    }
+
+    .account-details dt {
+        margin-block-end: 0.2rem;
+        color: #687386;
+        font-size: 0.75rem;
+    }
+
+    .account-details dd {
+        color: #243247;
+        font-weight: 500;
+    }
+
+    .account-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.3rem 0.65rem;
+        border: 1px solid #e1e6ed;
+        border-radius: 999px;
+        background: #f7f9fc;
+        color: #526075;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .account-status--pending {
+        border-color: #f5deb2;
+        background: #fffbf1;
+        color: #956415;
+    }
+
+    .account-status--approved {
+        border-color: #bde6d5;
+        background: #edf9f3;
+        color: #217554;
+    }
+
+    .account-status--rejected {
+        border-color: #f4cbd2;
+        background: #fff3f5;
+        color: #b04255;
+    }
+
+    .account-field {
+        color: #435269;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .account-input,
+    .account-management :is(input, select, textarea) {
+        inline-size: 100%;
+        min-inline-size: 0;
+        padding: 0.65rem 0.8rem;
+        border: 1px solid #d8e0ea;
+        border-radius: 0.5rem;
+        background: #fff;
+        color: #243247;
+        font-size: 0.8125rem;
+        font-weight: 400;
+        line-height: 1.5;
+    }
+
+    .account-input:disabled {
+        background: #f7f9fc;
+    }
+
+    .account-empty-state {
+        display: grid;
+        justify-items: start;
+        align-content: center;
+        gap: 0.8rem;
+        min-block-size: 10rem;
+        padding: 1.5rem;
+        border: 1px dashed #d8e0ea;
+        border-radius: 0.75rem;
+        background: #f8fafc;
+        color: #687386;
+        font-size: 0.8125rem;
+    }
+
+    .account-qr-selector .content-card {
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .account-qr-selector .content-card h2 {
+        margin: 0;
+        font-size: 0.9375rem;
+    }
+
+    .account-qr-selector .content-card > p {
+        color: #687386;
+        font-size: 0.8125rem;
+    }
+
+    .account-management label {
+        color: #435269;
+        font-size: 0.75rem;
+        font-weight: 600;
     }
 }

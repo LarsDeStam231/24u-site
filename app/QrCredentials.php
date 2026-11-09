@@ -69,7 +69,8 @@ class QrCredentials
             $codes['attendance'] = $this->images->forUrl(route('attendance.index').'#token='.$user->attendance_token);
         }
         if ($user->donation_token && $user->role === 'student') {
-            $codes['donation'] = $this->images->forUrl(route('students.donation', $user->donation_token));
+            $donationUrl = rtrim(config('event.event.publicUrl'), '/').route('students.donation', $user->donation_token, false);
+            $codes['donation'] = $this->images->forUrl($donationUrl);
         }
 
         return $codes;

@@ -1,9 +1,9 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import axios from 'axios';
 import PageHeading from '../components/layout/PageHeading.vue';
 import ActionButton from '../components/ui/ActionButton.vue';
-import ContentManagement from '../components/ContentManagement.vue';
+import AccountDashboard from '../components/account/AccountDashboard.vue';
 import QrCards from '../components/ui/QrCards.vue';
 import LoginForm from '../components/ui/LoginForm.vue';
 import PasskeyPhone from '../components/ui/PasskeyPhone.vue';
@@ -30,13 +30,9 @@ const busy = ref(false);
 const message = ref('');
 const error = ref('');
 const codes = ref(props.qr.codes || {});
-const accounts = ref(null);
-const selected = ref([]);
 const scanResult = ref(null);
 const hasCodes = computed(() => Object.keys(codes.value).length > 0);
-const hasShareableCodes = computed(() => Object.keys(props.qr.shareableCodes || {}).length > 0);
 const inputClass = 'w-full rounded border border-slate-300 bg-white p-3 text-slate-950';
-const roles = ['student', 'organisatie', 'vrijwilliger', 'donateur', 'gast', 'admin'];
 
 function tokenFrom(value) {
     try {
@@ -89,47 +85,12 @@ async function recordAttendance(action) {
         message.value = response.data.message;
     });
 }
-
-async function loadAccounts(url = endpoints.requests) {
-    const response = await axios.get(url);
-    accounts.value = response.data;
-    selected.value = [];
-}
-
-async function manageAccount(account, status) {
-    await perform(async () => {
-        const response = status
-            ? await axios.patch(account.approveUrl, { role: account.role, status })
-            : await axios.post(account.inviteUrl);
-        message.value = response.data.message;
-        await loadAccounts();
-    });
-}
-
-async function inviteSelected() {
-    await perform(async () => {
-        const response = await axios.post(endpoints.inviteSelected, { ids: selected.value });
-        message.value = response.data.message;
-        selected.value = [];
-    });
-}
-
-async function logout() {
-    await perform(async () => {
-        const response = await axios.post(endpoints.logout);
-        window.location.assign(response.data.redirect);
-    });
-}
-
-onMounted(() => {
-    if (props.qr.canManage) perform(() => loadAccounts());
-});
 </script>
 
 <template>
     <div>
-    <PageHeading :page="page" :event="event" />
-    <div class="page-container grid gap-6 py-10">
+    <PageHeading v-if="qr.mode !== 'account'" :page="page" :event="event" />
+    <div class="page-container grid gap-6" :class="qr.mode === 'account' ? 'py-6' : 'py-10'">
         <p v-if="message" role="status" class="rounded border border-green-300 bg-green-50 p-4 text-green-950">{{ message }}</p>
         <p v-if="error" role="alert" class="rounded border border-red-300 bg-red-50 p-4 text-red-950">{{ error }}</p>
 
@@ -182,75 +143,7 @@ onMounted(() => {
             </template>
         </section>
 
-        <template v-if="qr.mode === 'account'">
-            <section class="content-card grid gap-4 p-6">
-                <h2 class="text-2xl">Welkom, {{ qr.account.name || 'deelnemer' }}</h2>
-                <p>{{ qr.account.email }} · {{ qr.account.role }}</p>
-                <p v-if="qr.account.studentNumber">Studentnummer: {{ qr.account.studentNumber }}</p>
-                <p>Aanwezigheid: <strong>{{ qr.account.isPresent ? 'aanwezig' : 'afwezig' }}</strong></p>
-                <div class="flex flex-wrap gap-3">
-                    <ActionButton v-if="qr.canScan" :href="endpoints.attendance">Aanwezigheid registreren</ActionButton>
-                    <ActionButton :href="endpoints.passkeys" variant="outline">Accountinstellingen: passkeys beheren</ActionButton>
-                    <ActionButton variant="outline" :disabled="busy" @click="logout">Uitloggen</ActionButton>
-                </div>
-            </section>
-            <template v-if="hasShareableCodes">
-                <section class="grid gap-4" aria-labelledby="shareable-qr-title">
-                    <div class="grid gap-2">
-                        <h2 id="shareable-qr-title" class="text-2xl">QR-codes om te delen</h2>
-                        <p>Deze twee QR-codes mag je openbaar delen. Ze geven geen toegang tot jouw account.</p>
-                    </div>
-                    <QrCards :codes="qr.shareableCodes" />
-                    <p class="text-sm text-slate-600">Donaties gaan rechtstreeks via de stichting en worden op deze website nog niet automatisch meegeteld of aan deelnemers gekoppeld.</p>
-                </section>
-                <details>
-                    <summary class="cursor-pointer text-xl font-bold">Aanwezigheid</summary>
-                    <QrCards v-if="codes.attendance" :codes="{ attendance: codes.attendance }" class="max-w-xl pt-4" />
-                    <p v-else class="pt-4">Je aanwezigheids-QR wordt beschikbaar na activering via de link in je e-mail. De twee deelbare QR-codes hierboven kun je al gebruiken.</p>
-                </details>
-            </template>
-            <template v-else>
-                <QrCards v-if="hasCodes" :codes="codes" />
-                <p v-else>Activeer eerst je QR-codes via de link in je e-mail.</p>
-            </template>
-            <section v-if="qr.account.role === 'student'" class="content-card grid gap-3 p-6">
-                <h2 class="text-2xl">Mijn donaties en ranking</h2>
-                <p>Nog niet beschikbaar: het goede doel ontvangt betalingen via zijn eigen betaalpagina. Zolang betaalbevestigingen ontbreken, tonen we geen onbevestigde bedragen of ranglijst.</p>
-            </section>
-            <section v-if="qr.history?.length" class="content-card grid gap-3 p-6">
-                <h2 class="text-2xl">Mijn aanwezigheidsgeschiedenis</h2>
-                <ul class="grid gap-2"><li v-for="(entry, index) in qr.history" :key="index">{{ entry.created_at }} — {{ entry.action === 'check-in' ? 'Ingecheckt' : 'Uitgecheckt' }}</li></ul>
-            </section>
-            <section v-if="qr.canManage" class="content-card grid gap-5 p-6">
-                <h2 class="text-2xl">Registratieaanvragen en bestaande studenten</h2>
-                <p>Ken eerst de juiste rol toe en keur de aanvraag goed. De gebruiker ontvangt daarna een activatiemail.</p>
-                <ActionButton :disabled="busy || !selected.length" @click="inviteSelected">Nodig geselecteerde studenten uit ({{ selected.length }})</ActionButton>
-                <div v-if="accounts" class="grid gap-4">
-                    <article v-for="account in accounts.data" :key="account.id" class="grid gap-3 rounded border border-slate-200 p-4 lg:grid-cols-2">
-                        <div>
-                            <p class="font-bold">{{ account.name || account.email }}</p>
-                            <p>{{ account.email }} — {{ account.registration_status }}</p>
-                            <label v-if="account.role === 'student' && account.registration_status === 'approved'" class="flex items-center gap-2"><input v-model="selected" type="checkbox" :value="account.id" /> Uitnodigen</label>
-                        </div>
-                        <div class="grid gap-3">
-                            <label class="grid gap-2">Rol<select v-model="account.role" :class="inputClass"><option v-for="role in roles" :key="role" :value="role">{{ role }}</option></select></label>
-                            <div class="flex flex-wrap gap-2">
-                                <ActionButton :disabled="busy" @click="manageAccount(account, 'approved')">Goedkeuren en uitnodigen</ActionButton>
-                                <ActionButton variant="outline" :disabled="busy" @click="manageAccount(account, 'rejected')">Afwijzen</ActionButton>
-                                <ActionButton v-if="account.registration_status === 'approved'" variant="outline" :disabled="busy" @click="manageAccount(account)">Activatiemail opnieuw</ActionButton>
-                            </div>
-                        </div>
-                    </article>
-                    <p v-if="!accounts.data.length">Geen accounts gevonden.</p>
-                    <div class="flex gap-3">
-                        <ActionButton v-if="accounts.prev_page_url" variant="outline" :disabled="busy" @click="perform(() => loadAccounts(accounts.prev_page_url))">Vorige</ActionButton>
-                        <ActionButton v-if="accounts.next_page_url" variant="outline" :disabled="busy" @click="perform(() => loadAccounts(accounts.next_page_url))">Volgende</ActionButton>
-                    </div>
-                </div>
-            </section>
-        </template>
-
-        <ContentManagement v-if="qr.mode === 'account' && qr.canManageContent" :endpoints="endpoints" :can-manage-challenge-ladder="qr.canManageChallengeLadder" />
+        <AccountDashboard v-if="qr.mode === 'account'" :qr="qr" />
 
         <section v-if="qr.mode === 'donation'" class="content-card mx-auto grid w-full max-w-2xl gap-5 p-6">
             <h2 class="text-3xl">Steun de actie van {{ qr.studentName }}</h2>
