@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { compileScript, parse } from '@vue/compiler-sfc';
-import { createRenderer, h, nextTick } from 'vue';
+import { createRenderer, createSSRApp, h, nextTick } from 'vue';
+import { renderToString } from 'vue/server-renderer';
 import axios from 'axios';
 
 const modules = new Map();
@@ -54,10 +55,14 @@ const ProgramCard = await loadComponent('components/home/ProgramCard.vue');
 const CountdownTimer = await loadComponent('components/home/CountdownTimer.vue');
 const ContentManagement = await loadComponent('components/ContentManagement.vue');
 const QrCards = await loadComponent('components/ui/QrCards.vue');
+const AccountDashboard = await loadComponent('components/account/AccountDashboard.vue');
+const AccountQrCodes = await loadComponent('components/account/AccountQrCodes.vue');
+const SectionTabs = await loadComponent('components/ui/SectionTabs.vue');
+const PersonalFlyer = await loadComponent('components/account/PersonalFlyer.vue');
 
 function node(type, text = '') {
     return {
-        type, text, props: {}, children: [], parent: null, value: '',
+        type, text, props: {}, children: [], parent: null, value: '', style: {},
         addEventListener() {},
         getRootNode() { return this; },
         get options() { return this.children.filter(child => child.type === 'option'); },
@@ -247,6 +252,52 @@ test('a rejected refresh preserves the real total and recovers on the next refre
     assert.deepEqual(updatedTotals, [2500]);
 });
 
+for (const [raisedCents, percentage, width, reached] of [
+    [0, '0', 0, false], [25000, '50', 50, false], [50000, '100', 100, true], [65000, '130', 100, true],
+]) test(`a personal counter shows ${percentage}% of the student goal without overflowing its progress bar`, async (t) => {
+    browser(t, () => response(raisedCents));
+    const { root } = mount(t, DonationCounter, {
+        fundraising: { raisedCents, goalCents: 50000 }, challenges: [], endpoint: '/account/donations/total',
+        title: 'Persoonlijke donatieteller', showNextChallenge: false, showGoalStatus: true,
+    });
+    await flushUpdates();
+
+    const progress = withClass(root, 'progress-track')[0];
+    assert.match(text(root), /Persoonlijke donatieteller/);
+    assert.match(text(root), /van €\s*500/);
+    assert.equal(text(withClass(root, 'counter-percentage')[0]), `${percentage}% opgehaald`);
+    assert.equal(progress.children[0].props.style.width, `${width}%`);
+    assert.equal(progress.props['aria-valuenow'], width);
+    assert.equal(progress.props['aria-valuemax'], '100');
+    assert.equal(withClass(root, 'donation-counter--goal-reached').length, reached ? 1 : 0);
+    assert.match(text(withClass(root, 'counter-goal-status')[0]), reached ? /Doel behaald/ : /Nog/);
+    assert.doesNotMatch(text(root), /volgende challenge|Alle mijlpalen/);
+});
+
+test('the personal counter turns green at the goal and returns to red after a refunded donation', async (t) => {
+    let total = 49999;
+    const flow = browser(t, () => response(total));
+    const { root } = mount(t, DonationCounter, {
+        fundraising: { raisedCents: total, goalCents: 50000 }, challenges: [], endpoint: '/account/donations/total',
+        showNextChallenge: false, showGoalStatus: true,
+    });
+    await flushUpdates();
+
+    assert.equal(withClass(root, 'donation-counter--goal-reached').length, 0);
+    assert.match(text(withClass(root, 'counter-goal-status')[0]), /Nog €\s*0,01/);
+    total = 50000;
+    await flow.refresh();
+
+    assert.equal(withClass(root, 'donation-counter--goal-reached').length, 1);
+    assert.match(text(withClass(root, 'counter-goal-status')[0]), /Doel behaald/);
+    total = 45000;
+    await flow.refresh();
+
+    assert.equal(withClass(root, 'donation-counter--goal-reached').length, 0);
+    assert.match(text(withClass(root, 'counter-goal-status')[0]), /Nog €\s*50/);
+    assert.equal(withClass(root, 'progress-track')[0].children[0].props.style.width, '90%');
+});
+
 test('the donation card opens the official donation page without a simulated checkout', (t) => {
     const foundation = { name: 'Wensstichting Drenthe', donateUrl: 'https://wensstichtingdrenthe.nl/doneren' };
     const { root } = mount(t, DonationCard, { foundation });
@@ -401,7 +452,7 @@ async function clickButton(root, label) {
 }
 
 function field(root, label) {
-    const element = descendants(root, item => item.type === 'label' && text(item).startsWith(label))[0];
+    const element = descendants(root, item => item.type === 'label' && text(item).trimStart().startsWith(label))[0];
     assert.ok(element, `Field ${label} should be visible`);
     return descendants(element, item => ['input', 'textarea', 'select'].includes(item.type))[0];
 }
@@ -520,4 +571,186 @@ test('public share QR cards have downloads and the correct safe navigation links
     assert.equal(donationLink.props.rel, 'noopener noreferrer');
     assert.equal(withClass(root, 'xl:grid-cols-3').length, 0);
     assert.doesNotMatch(text(root), /Inloggen — privé/);
+});
+
+function accountData(overrides = {}) {
+    return {
+        account: { name: 'Sam', email: 'sam@example.com', role: 'student', isPresent: false },
+        canManage: false, canManageContent: false, canManageChallengeLadder: false, canScan: false,
+        flyer: null, personalFundraising: null, codes: {}, shareableCodes: {}, history: [],
+        endpoints: { ...managementEndpoints, requests: '/account/aanvragen', inviteSelected: '/account/studenten-uitnodigen', passkeys: '/account/passkeys', logout: '/uitloggen', personalDonationTotal: '/account/donations/total' },
+        ...overrides,
+    };
+}
+
+test('a participant sees only the general account tab and no simulated personal donation amount', (t) => {
+    const { root } = mount(t, AccountDashboard, { qr: accountData() });
+
+    assert.deepEqual(descendants(root, element => element.props.role === 'tab').map(text), ['Algemeen']);
+    assert.match(text(root), /Nog geen bevestigde bedragen beschikbaar/);
+    assert.doesNotMatch(text(root), /€\s*0|Registraties|Website-inhoud beheren/);
+    assert.equal(descendants(root, element => element.type === 'a' && element.props.href === '/account/passkeys').length, 1);
+});
+
+test('a student account uses the shared counter style and refreshes only its personal donation total', async (t) => {
+    const flow = browser(t, () => response(65000));
+    const { root } = mount(t, AccountDashboard, { qr: accountData({ personalFundraising: { goalCents: 50000, raisedCents: 12345 } }) });
+
+    assert.match(text(withClass(root, 'counter-total')[0]), /123,45/);
+    await flushUpdates();
+
+    assert.deepEqual(descendants(root, element => element.props.role === 'tab').map(text), ['Algemeen']);
+    assert.equal(withClass(root, 'donation-counter').length, 1);
+    assert.match(text(withClass(root, 'counter-total')[0]), /650/);
+    assert.match(text(root), /Persoonlijke donatieteller/);
+    assert.match(text(root), /130% opgehaald/);
+    assert.match(text(root), /niet automatisch/);
+    assert.doesNotMatch(text(root), /Nog geen bevestigde bedragen beschikbaar/);
+    assert.deepEqual(flow.requests.map(request => request.url), ['/account/donations/total']);
+});
+
+test('public account names are rendered as text rather than executable HTML', async () => {
+    const qr = accountData({ account: { name: '<script>alert(1)</script>', email: 'sam@example.com', role: 'student', isPresent: false } });
+
+    const html = await renderToString(createSSRApp({ render: () => h(AccountDashboard, { qr }) }));
+
+    assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+});
+
+test('an organization account receives website management but not registration management', (t) => {
+    const { root } = mount(t, AccountDashboard, { qr: accountData({ canManageContent: true }) });
+
+    assert.deepEqual(descendants(root, element => element.props.role === 'tab').map(text), ['Algemeen', 'Websitebeheer']);
+    assert.equal(descendants(root, element => element.props.id === 'account-panel-website')[0].props.hidden, true);
+});
+
+test('account navigation loads registration management once and preserves edited roles when switching tabs', async (t) => {
+    browser(t, () => response(0));
+    const originalGet = axios.get;
+    const originalPatch = axios.patch;
+    const requests = [];
+    const saved = [];
+    axios.get = async url => {
+        requests.push(url);
+        return { data: { data: [{ id: 1, name: 'Nieuwe deelnemer', email: 'new@example.com', role: 'gast', registration_status: 'pending', approveUrl: '/account/aanvragen/1' }] } };
+    };
+    axios.patch = async (url, payload) => { saved.push({ url, payload }); return { data: { message: 'Goedgekeurd.' } }; };
+    after(t, () => { axios.get = originalGet; axios.patch = originalPatch; });
+    const { root } = mount(t, AccountDashboard, { qr: accountData({ canManage: true }) });
+    assert.equal(requests.length, 0);
+
+    await clickButton(root, 'Registratie');
+    await flushUpdates();
+    field(root, 'Accountrol').props['onUpdate:modelValue']('student');
+    await nextTick();
+    await clickButton(root, 'Algemeen');
+    await clickButton(root, 'Registratie');
+
+    assert.deepEqual(requests, ['/account/aanvragen']);
+    assert.equal(descendants(root, element => element.props.id === 'account-panel-general')[0].props.hidden, true);
+    assert.equal(descendants(root, element => element.props.id === 'account-panel-registrations')[0].props.hidden, false);
+    await clickButton(root, 'Goedkeuren en uitnodigen');
+    assert.deepEqual(saved, [{ url: '/account/aanvragen/1', payload: { role: 'student', status: 'approved' } }]);
+    assert.match(text(root), /Goedgekeurd\./);
+});
+
+test('QR selection shows only one code and labels the attendance QR as private', async (t) => {
+    const { root } = mount(t, AccountQrCodes, { codes: {
+        donation: { url: '/studenten/doneren/public', image: 'data:image/svg+xml;base64,personal' },
+        website: { url: '/', image: 'data:image/svg+xml;base64,website' },
+        attendance: { url: '/aanwezigheid#token=private', image: 'data:image/svg+xml;base64,private' },
+    } });
+
+    assert.equal(descendants(root, element => element.type === 'img')[0].props.src, 'data:image/svg+xml;base64,personal');
+    assert.equal(descendants(root, element => element.type === 'img').length, 1);
+    await clickButton(root, 'Aanwezigheid');
+
+    assert.equal(descendants(root, element => element.type === 'img').length, 1);
+    assert.equal(descendants(root, element => element.type === 'img')[0].props.src, 'data:image/svg+xml;base64,private');
+    assert.match(text(root), /aanwezigheids-QR is privé/);
+    assert.doesNotMatch(text(root), /Bekijk mijn pagina/);
+});
+
+for (const [key, index, target] of [
+    ['ArrowRight', 0, 1], ['ArrowRight', 1, 0], ['ArrowLeft', 0, 1], ['Home', 1, 0], ['End', 0, 1],
+]) test(`section navigation handles ${key} from tab ${index} and moves focus to tab ${target}`, (t) => {
+    const selected = [];
+    const { root } = mount(t, SectionTabs, {
+        id: 'test', label: 'Onderdeel kiezen', modelValue: 'general',
+        items: [{ id: 'general', label: 'Algemeen' }, { id: 'website', label: 'Websitebeheer' }],
+        'onUpdate:modelValue': id => selected.push(id),
+    });
+    const tabs = descendants(root, element => element.props.role === 'tab');
+    let focused = false;
+    let prevented = false;
+    tabs[target].focus = () => { focused = true; };
+
+    tabs[index].props.onKeydown({ key, preventDefault: () => { prevented = true; }, currentTarget: { parentElement: { querySelectorAll: () => tabs } } });
+
+    assert.deepEqual(selected, [target === 0 ? 'general' : 'website']);
+    assert.equal(focused, true);
+    assert.equal(prevented, true);
+});
+
+function flyerBrowser(t, fails = false) {
+    const previousImage = globalThis.Image;
+    const previousDocument = globalThis.document;
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    const released = [];
+    const state = { fails };
+    globalThis.Image = class {
+        naturalWidth = 1024;
+        naturalHeight = 1536;
+        set src(source) { queueMicrotask(() => state.fails ? this.onerror() : this.onload()); }
+    };
+    globalThis.document = {
+        createElement: () => ({
+            getContext: () => ({ drawImage() {}, fillRect() {} }),
+            toBlob: callback => callback(new Blob(['flyer'], { type: 'image/png' })),
+        }),
+    };
+    URL.createObjectURL = () => 'blob:personal-flyer';
+    URL.revokeObjectURL = value => released.push(value);
+    after(t, () => {
+        globalThis.Image = previousImage;
+        globalThis.document = previousDocument;
+        URL.createObjectURL = originalCreate;
+        URL.revokeObjectURL = originalRevoke;
+    });
+    return { state, released };
+}
+
+const personalFlyer = { templateUrl: '/flyer.png', donationCode: { url: '/studenten/doneren/public', image: 'data:image/svg+xml;base64,personal' } };
+
+test('the flyer preview and download use the generated personal PNG and release it after leaving', async (t) => {
+    const flow = flyerBrowser(t);
+    const { root, unmount } = mount(t, PersonalFlyer, { flyer: personalFlyer });
+    await flushUpdates();
+    await flushUpdates();
+
+    assert.equal(descendants(root, element => element.type === 'img')[0].props.src, 'blob:personal-flyer');
+    const download = descendants(root, element => element.props.download)[0];
+    assert.equal(download.props.href, 'blob:personal-flyer');
+    assert.equal(download.props.download, '24uur-live-persoonlijke-flyer.png');
+    assert.equal(descendants(root, element => element.type === 'a' && element.props.href === personalFlyer.donationCode.url).length, 1);
+    unmount();
+    assert.deepEqual(flow.released, ['blob:personal-flyer']);
+});
+
+test('a failed flyer generation shows an error and offers no original QR download, then allows retry', async (t) => {
+    const flow = flyerBrowser(t, true);
+    const { root } = mount(t, PersonalFlyer, { flyer: personalFlyer });
+    await flushUpdates();
+    await flushUpdates();
+
+    assert.match(text(root), /kon niet worden geladen/);
+    assert.equal(descendants(root, element => element.props.download).length, 0);
+    assert.equal(descendants(root, element => element.type === 'img').length, 0);
+    flow.state.fails = false;
+    await clickButton(root, 'Opnieuw proberen');
+
+    assert.equal(descendants(root, element => element.props.download)[0].props.href, 'blob:personal-flyer');
+    assert.doesNotMatch(text(root), /kon niet worden geladen/);
 });

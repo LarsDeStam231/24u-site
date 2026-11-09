@@ -17,10 +17,19 @@ class PasskeyChanged extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $brandName = config('event.event.name');
+        $preposition = $this->change === 'verwijderd' ? 'van' : 'aan';
+
         return (new MailMessage)
-            ->subject('Passkey '.$this->change.' — 24 Uur Live')
-            ->line('Er is een passkey '.$this->change.' aan jouw account: '.$this->name.'.')
-            ->action('Passkeys beheren', route('passkeys.index'))
-            ->line('Heb je dit niet zelf gedaan? Wijzig je wachtwoord en verwijder onbekende passkeys.');
+            ->from(config('mail.from.address'), $brandName)
+            ->subject('Online sleutel '.$this->change.' — '.$brandName)
+            ->greeting('Hallo!')
+            ->line('Er is een online sleutel '.$this->change.' '.$preposition.' jouw account: '.$this->name.'.')
+            ->action('Online sleutels beheren', route('passkeys.index'))
+            ->line('Heb je dit niet zelf gedaan? Wijzig je wachtwoord en verwijder onbekende online sleutels.')
+            ->salutation('Met vriendelijke groet,')
+            ->view(['mail.passkey-changed', 'mail.passkey-changed-text'], [
+                'brandName' => $brandName,
+            ]);
     }
 }

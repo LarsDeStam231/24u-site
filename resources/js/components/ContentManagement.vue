@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import axios from 'axios';
 import ActionButton from './ui/ActionButton.vue';
+import SectionTabs from './ui/SectionTabs.vue';
 import { formatMoney } from '../utils/format';
 
 const props = defineProps({
@@ -190,24 +191,22 @@ onMounted(loadContent);
 </script>
 
 <template>
-    <section class="content-card grid gap-5 p-6" aria-labelledby="content-management-title">
+    <section class="account-card account-management grid gap-5" aria-labelledby="content-management-title">
         <header class="grid gap-2">
-            <p class="section-label">Beheer</p>
-            <h2 id="content-management-title" class="text-2xl">Website-inhoud beheren</h2>
-            <p class="text-slate-600">Wijzigingen worden direct zichtbaar op de publieke website.</p>
+            <p class="account-eyebrow">Websitebeheer</p>
+            <h2 id="content-management-title">Website-inhoud beheren</h2>
+            <p class="account-muted">Pas de inhoud aan. Opgeslagen wijzigingen zijn direct zichtbaar op de website.</p>
         </header>
 
         <p v-if="message" role="status" class="rounded border border-green-300 bg-green-50 p-3 text-green-950">{{ message }}</p>
         <p v-if="error" role="alert" class="rounded border border-red-300 bg-red-50 p-3 text-red-950">{{ error }}</p>
 
-        <nav class="flex flex-wrap gap-2" aria-label="Beheeronderdelen">
-            <button v-for="section in sections" :key="section.id" type="button" class="rounded-full border px-4 py-2 font-semibold" :class="activeSection === section.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'" :aria-pressed="activeSection === section.id" @click="activeSection = section.id">{{ section.label }}</button>
-        </nav>
+        <SectionTabs id="website" v-model="activeSection" :items="sections" label="Beheeronderdelen" />
 
         <p v-if="loading" class="text-slate-600">Beheerinformatie laden…</p>
 
-        <template v-else>
-            <div v-if="activeSection === 'program'" class="grid gap-5">
+        <div v-else :id="`website-panel-${activeSection}`" role="tabpanel" :aria-labelledby="`website-tab-${activeSection}`">
+            <div v-if="activeSection === 'program'" class="grid items-start gap-5 lg:grid-cols-2">
                 <form class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveProgramItem">
                     <h3 class="text-lg font-semibold">{{ programForm.id ? 'Programmaonderdeel aanpassen' : 'Programmaonderdeel toevoegen' }}</h3>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -248,8 +247,8 @@ onMounted(loadContent);
                 </div>
             </div>
 
-            <div v-else-if="activeSection === 'challenges'" class="grid gap-5">
-                <p v-if="!canManageChallengeLadder" class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Organisatie kan challengenamen en beschrijvingen aanpassen. Bedragen en de ladder zelf zijn alleen door een admin te wijzigen.</p>
+            <div v-else-if="activeSection === 'challenges'" class="grid items-start gap-5 lg:grid-cols-2">
+                <p v-if="!canManageChallengeLadder" class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 lg:col-span-2">Organisatie kan challengenamen en beschrijvingen aanpassen. Bedragen en de ladder zelf zijn alleen door een admin te wijzigen.</p>
                 <form v-if="canManageChallengeLadder || challengeForm.id" class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveChallenge">
                     <h3 class="text-lg font-semibold">{{ challengeForm.id ? 'Challenge aanpassen' : 'Challenge toevoegen' }}</h3>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -277,10 +276,10 @@ onMounted(loadContent);
                 </div>
             </div>
 
-            <div v-else class="grid gap-5">
+            <div v-else class="grid items-start gap-5 lg:grid-cols-2">
                 <form class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveSponsor">
                     <h3 class="text-lg font-semibold">{{ sponsorForm.id ? 'Sponsor aanpassen' : 'Sponsor toevoegen' }}</h3>
-                    <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="grid gap-4">
                         <label class="grid gap-1">Bedrijfsnaam<input v-model="sponsorForm.companyName" class="w-full rounded border border-slate-300 bg-white p-2" maxlength="255" required /></label>
                         <label class="grid gap-1">Sponsorniveau<select v-model="sponsorForm.sponsorshipType" class="w-full rounded border border-slate-300 bg-white p-2"><option v-for="type in sponsorshipTypes" :key="type.value" :value="type.value">{{ type.label }}</option></select></label>
                         <label class="grid gap-1">Type organisatie<select v-model="sponsorForm.companyType" class="w-full rounded border border-slate-300 bg-white p-2"><option v-for="type in companyTypes" :key="type.label" :value="type.value">{{ type.label }}</option></select></label>
@@ -304,6 +303,6 @@ onMounted(loadContent);
                 </div>
                 <p v-else class="text-slate-600">Er zijn nog geen sponsoren toegevoegd.</p>
             </div>
-        </template>
+        </div>
     </section>
 </template>

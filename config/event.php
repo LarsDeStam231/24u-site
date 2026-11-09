@@ -3,6 +3,7 @@
 return [
     'event' => [
         'name' => 'DCTerra 24 Uur Live',
+        'publicUrl' => 'https://dcterralivestream.nl',
         'year' => 2026,
         'title' => ['24 UUR SAMEN.', '1 GOED DOEL.'],
         'introduction' => 'Studenten, docenten en sponsoren komen samen voor Wensstichting Drenthe. 24 uur lang gaming, challenges en entertainment — allemaal voor een goed doel.',
@@ -23,6 +24,7 @@ return [
             'description' => 'Samen wensen mogelijk maken voor kinderen en gezinnen in Drenthe.',
         ],
         'fundraising' => ['goalCents' => 1000000],
+        'studentFundraising' => ['goalCents' => 50000],
         'stream' => ['live' => false, 'url' => 'https://www.youtube.com/@DCterra24uur'],
         'highlights' => [
             ['icon' => 'game', 'title' => '24 UUR LIVE', 'text' => 'Non-stop gaming en entertainment'],

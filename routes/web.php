@@ -67,6 +67,7 @@ Route::middleware(ProtectQrResponses::class)->group(function (): void {
 
     Route::middleware(['auth', EnsureApprovedAccount::class])->group(function (): void {
         Route::get('/account', [QrAccountController::class, 'index'])->name('account.index');
+        Route::get('/account/donations/total', [QrAccountController::class, 'donationTotal'])->name('account.donations.total');
         Route::get('/account/content', [AccountContentController::class, 'index'])->name('account.content.index');
         Route::post('/account/content/program', [AccountContentController::class, 'storeProgramItem'])->name('account.content.program.store');
         Route::patch('/account/content/program/{programItem}', [AccountContentController::class, 'updateProgramItem'])->name('account.content.program.update');

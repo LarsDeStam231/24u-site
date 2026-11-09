@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\FundraisingTotal;
 use App\Models\User;
 use App\QrCredentials;
 use App\QrPageData;
@@ -15,11 +16,14 @@ use Illuminate\View\View;
 
 class QrAccountController extends Controller
 {
-    public function index(Request $request, QrPageData $pages, QrCredentials $credentials): View
+    public function index(Request $request, QrPageData $pages, QrCredentials $credentials, QrImage $images, FundraisingTotal $total): View
     {
         $user = $request->user();
         $codes = $credentials->publicCodes($user);
         $shareableCodes = [];
+        $flyer = $user->role === 'student' && $user->name && isset($codes['donation'])
+            ? ['templateUrl' => asset('assets/event/Flyer 2026 stream.png'), 'donationCode' => $codes['donation']]
+            : null;
 
         if (in_array($user->role, ['student', 'vrijwilliger', 'organisatie'], true)) {
             $shareableCodes = $credentials->shareableCodes();
@@ -31,11 +35,24 @@ class QrAccountController extends Controller
                 'isPresent' => $user->is_present, 'studentNumber' => $user->student_number],
             'codes' => $codes,
             'shareableCodes' => $shareableCodes,
+            'flyer' => $flyer,
+            'personalFundraising' => $user->role === 'student' ? [
+                'goalCents' => config('event.event.studentFundraising.goalCents'),
+                'raisedCents' => $total->raisedCentsForStudent($user),
+            ] : null,
             'history' => DB::table('attendance_logs')->where('user_id', $user->id)->orderByDesc('id')
                 ->limit(50)->get(['action', 'created_at'])->all(),
             'canManage' => Gate::allows('manage-qr-accounts'),
             'canScan' => Gate::allows('scan-attendance'),
         ]);
+    }
+
+    public function donationTotal(Request $request, FundraisingTotal $total): JsonResponse
+    {
+        abort_unless($request->user()->role === 'student', 403);
+
+        return response()->json(['raisedCents' => $total->raisedCentsForStudent($request->user())])
+            ->header('Cache-Control', 'no-store');
     }
 
     public function requests(): JsonResponse
