@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Database\Seeders\AdminSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -71,12 +72,15 @@ class PasswordLoginTest extends TestCase
     #[DataProvider('invalidCredentials')]
     public function test_invalid_or_unapproved_accounts_cannot_log_in(string $status, ?string $storedPassword, string $password, string $email): void
     {
+        Mail::fake();
         User::factory()->create(['email' => 'user@example.com', 'registration_status' => $status, 'password' => $storedPassword]);
 
         $this->postJson(route('password.login.store'), ['email' => $email, 'password' => $password])
             ->assertUnprocessable()->assertInvalid(['email' => 'De inloggegevens kloppen niet of je account is nog niet goedgekeurd.']);
 
         $this->assertGuest();
+        Mail::assertNothingSent();
+        $this->assertDatabaseHas('users', ['email' => 'user@example.com', 'qr_codes_emailed_at' => null]);
     }
 
     public function test_email_and_password_are_required(): void

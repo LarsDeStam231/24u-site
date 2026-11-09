@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\FundraisingTotal;
 use App\Models\User;
 use App\QrCredentials;
-use App\QrImage;
 use App\QrPageData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,10 +26,7 @@ class QrAccountController extends Controller
             : null;
 
         if (in_array($user->role, ['student', 'vrijwilliger', 'organisatie'], true)) {
-            $shareableCodes = [
-                'website' => $images->forUrl(route('home')),
-                'foundationDonation' => $images->forUrl(config('event.event.foundation.donateUrl')),
-            ];
+            $shareableCodes = $credentials->shareableCodes();
             unset($codes['donation']);
         }
 

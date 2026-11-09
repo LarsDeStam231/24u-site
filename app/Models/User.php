@@ -56,6 +56,7 @@ class User extends Authenticatable implements HasPasskeys
     {
         return [
             'email_verified_at' => 'datetime',
+            'qr_codes_emailed_at' => 'datetime',
             'password' => 'hashed',
             'is_present' => 'boolean',
         ];
