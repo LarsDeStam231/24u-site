@@ -8,8 +8,10 @@ use App\Models\Sponsor;
 use App\Models\User;
 use Database\Seeders\EventContentSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -208,6 +210,49 @@ class AccountContentTest extends TestCase
         $this->assertDatabaseMissing('sponsor', ['id' => $id]);
     }
 
+    public function test_organization_can_upload_replace_and_remove_a_sponsor_logo(): void
+    {
+        Storage::fake('public');
+        $organization = User::factory()->approved()->create(['role' => 'organisatie']);
+
+        $response = $this->actingAs($organization)->post(route('account.content.sponsors.store'), [
+            'companyName' => 'Sponsor A', 'sponsorshipType' => 'gold', 'logo' => $this->fakeLogo('logo.png'),
+        ], ['Accept' => 'application/json'])->assertCreated();
+        $sponsor = Sponsor::query()->findOrFail($response->json('sponsor.id'));
+        $firstLogo = $sponsor->logo_path;
+        Storage::disk('public')->assertExists($firstLogo);
+        $response->assertJsonPath('sponsor.logoUrl', Storage::disk('public')->url($firstLogo));
+        $this->get('/sponsoren')->assertViewHas('pageData.event.sponsorTiers.0.sponsors.0.logo', Storage::disk('public')->url($firstLogo));
+
+        $this->post(route('account.content.sponsors.update', $sponsor), [
+            '_method' => 'PATCH', 'companyName' => 'Sponsor A', 'sponsorshipType' => 'gold',
+            'logo' => $this->fakeLogo('nieuw.png'),
+        ], ['Accept' => 'application/json'])->assertOk();
+        $secondLogo = $sponsor->fresh()->logo_path;
+        Storage::disk('public')->assertMissing($firstLogo);
+        Storage::disk('public')->assertExists($secondLogo);
+
+        $this->patchJson(route('account.content.sponsors.update', $sponsor), [
+            'companyName' => 'Sponsor A', 'sponsorshipType' => 'gold', 'removeLogo' => true,
+        ])->assertOk()->assertJsonPath('sponsor.logoUrl', null);
+        Storage::disk('public')->assertMissing($secondLogo);
+    }
+
+    public function test_deleting_a_sponsor_removes_its_logo_and_non_images_are_rejected(): void
+    {
+        Storage::fake('public');
+        $organization = User::factory()->approved()->create(['role' => 'organisatie']);
+        $sponsor = Sponsor::factory()->create(['logo_path' => $this->fakeLogo('logo.png')->store('sponsors', 'public')]);
+
+        $this->actingAs($organization)->post(route('account.content.sponsors.store'), [
+            'companyName' => 'Sponsor B', 'sponsorshipType' => 'gold',
+            'logo' => UploadedFile::fake()->create('logo.svg', 10, 'image/svg+xml'),
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertInvalid(['logo']);
+
+        $this->deleteJson(route('account.content.sponsors.destroy', $sponsor))->assertOk();
+        Storage::disk('public')->assertMissing($sponsor->logo_path);
+    }
+
     public function test_invalid_sponsor_details_do_not_create_a_sponsor(): void
     {
         $organization = User::factory()->approved()->create(['role' => 'organisatie']);
@@ -229,6 +274,11 @@ class AccountContentTest extends TestCase
         ])->assertUnprocessable()->assertInvalid(['companyName']);
 
         $this->assertDatabaseCount('sponsor', 1);
+    }
+
+    private function fakeLogo(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($name, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
     }
 
     /** @return array<string, array{string, string, bool, bool}> */

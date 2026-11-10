@@ -143,7 +143,57 @@ async function recordAttendance(action) {
             </template>
         </section>
 
-        <AccountDashboard v-if="qr.mode === 'account'" :qr="qr" />
+        <template v-if="qr.mode === 'account'">
+            <section class="content-card grid gap-4 p-6">
+                <h2 class="text-2xl">Welkom, {{ qr.account.name || 'deelnemer' }}</h2>
+                <p>{{ qr.account.email }} · {{ qr.account.role }}</p>
+                <p v-if="qr.account.studentNumber">Studentnummer: {{ qr.account.studentNumber }}</p>
+                <p v-if="qr.account.discordCode">Discord-code: <strong class="font-mono tracking-widest">{{ qr.account.discordCode }}</strong> <span class="text-sm text-slate-600">{{ qr.account.discordLinked ? '(gekoppeld)' : '(stuur deze naar de bot op onze Discord-server)' }}</span></p>
+                <p>Aanwezigheid: <strong>{{ qr.account.isPresent ? 'aanwezig' : 'afwezig' }}</strong></p>
+                <div class="flex flex-wrap gap-3">
+                    <ActionButton v-if="qr.canScan" :href="endpoints.attendance">Aanwezigheid registreren</ActionButton>
+                    <ActionButton variant="outline" :disabled="busy" @click="mailRequest">Nieuwe privé-inlog-QR aanvragen via e-mail</ActionButton>
+                    <ActionButton variant="outline" :disabled="busy" @click="logout">Uitloggen</ActionButton>
+                </div>
+            </section>
+            <QrCards v-if="hasCodes" :codes="codes" />
+            <p v-else>Activeer eerst je QR-codes via de link in je e-mail.</p>
+            <section v-if="qr.account.role === 'student'" class="content-card grid gap-3 p-6">
+                <h2 class="text-2xl">Mijn donaties en ranking</h2>
+                <p>Nog niet beschikbaar: het goede doel ontvangt betalingen via zijn eigen betaalpagina. Zolang betaalbevestigingen ontbreken, tonen we geen onbevestigde bedragen of ranglijst.</p>
+            </section>
+            <section v-if="qr.history?.length" class="content-card grid gap-3 p-6">
+                <h2 class="text-2xl">Mijn aanwezigheidsgeschiedenis</h2>
+                <ul class="grid gap-2"><li v-for="(entry, index) in qr.history" :key="index">{{ entry.created_at }} — {{ entry.action === 'check-in' ? 'Ingecheckt' : 'Uitgecheckt' }}</li></ul>
+            </section>
+            <section v-if="qr.canManage" class="content-card grid gap-5 p-6">
+                <h2 class="text-2xl">Registratieaanvragen en bestaande studenten</h2>
+                <p>Ken eerst de juiste rol toe en keur de aanvraag goed. De gebruiker ontvangt daarna een activatiemail.</p>
+                <ActionButton :disabled="busy || !selected.length" @click="inviteSelected">Nodig geselecteerde studenten uit ({{ selected.length }})</ActionButton>
+                <div v-if="accounts" class="grid gap-4">
+                    <article v-for="account in accounts.data" :key="account.id" class="grid gap-3 rounded border border-slate-200 p-4 lg:grid-cols-2">
+                        <div>
+                            <p class="font-bold">{{ account.name || account.email }}</p>
+                            <p>{{ account.email }} — {{ account.registration_status }}</p>
+                            <label v-if="account.role === 'student' && account.registration_status === 'approved'" class="flex items-center gap-2"><input v-model="selected" type="checkbox" :value="account.id" /> Uitnodigen</label>
+                        </div>
+                        <div class="grid gap-3">
+                            <label class="grid gap-2">Rol<select v-model="account.role" :class="inputClass"><option v-for="role in roles" :key="role" :value="role">{{ role }}</option></select></label>
+                            <div class="flex flex-wrap gap-2">
+                                <ActionButton :disabled="busy" @click="manageAccount(account, 'approved')">Goedkeuren en uitnodigen</ActionButton>
+                                <ActionButton variant="outline" :disabled="busy" @click="manageAccount(account, 'rejected')">Afwijzen</ActionButton>
+                                <ActionButton v-if="account.registration_status === 'approved'" variant="outline" :disabled="busy" @click="manageAccount(account)">Activatiemail opnieuw</ActionButton>
+                            </div>
+                        </div>
+                    </article>
+                    <p v-if="!accounts.data.length">Geen accounts gevonden.</p>
+                    <div class="flex gap-3">
+                        <ActionButton v-if="accounts.prev_page_url" variant="outline" :disabled="busy" @click="perform(() => loadAccounts(accounts.prev_page_url))">Vorige</ActionButton>
+                        <ActionButton v-if="accounts.next_page_url" variant="outline" :disabled="busy" @click="perform(() => loadAccounts(accounts.next_page_url))">Volgende</ActionButton>
+                    </div>
+                </div>
+            </section>
+        </template>
 
         <section v-if="qr.mode === 'donation'" class="content-card mx-auto grid w-full max-w-2xl gap-5 p-6">
             <h2 class="text-3xl">Steun de actie van {{ qr.studentName }}</h2>

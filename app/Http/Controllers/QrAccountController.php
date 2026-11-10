@@ -32,6 +32,10 @@ class QrAccountController extends Controller
 
         return $pages->render('account', 'Mijn account', [
             'account' => ['name' => $user->name, 'email' => $user->email, 'role' => $user->role,
+                'isPresent' => $user->is_present, 'studentNumber' => $user->student_number,
+                'discordCode' => $credentials->ensureDiscordCode($user), 'discordLinked' => $user->discord_user_id !== null],
+            'codes' => $codes,
+            'shareableCodes' => $shareableCodes,
                 'isPresent' => $user->is_present, 'studentNumber' => $user->student_number],
             'codes' => $codes,
             'shareableCodes' => $shareableCodes,

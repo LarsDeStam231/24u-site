@@ -10,6 +10,12 @@ Website 24 Uur Live:
 Doneren aan Wensstichting Drenthe:
 {{ $codes['foundationDonation']['url'] }}
 
+@if ($discordCode)
+Discord-code (stuur deze in een privébericht naar de bot op onze Discord-server):
+{{ $discordCode }}
+Deze code is persoonlijk: deel hem niet met anderen.
+
+@endif
 Je mag deze QR-codes opslaan, printen en delen. Ze geven geen toegang tot jouw account.
 
 Groeten,

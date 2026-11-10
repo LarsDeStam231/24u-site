@@ -48,6 +48,8 @@ class FirstLoginQrMailTest extends TestCase
             foreach ($mail->codes as $code) {
                 $this->assertStringStartsWith("\x89PNG\r\n\x1a\n", $code['image']);
             }
+            $this->assertSame($user->fresh()->discord_code, $mail->discordCode);
+            $this->assertMatchesRegularExpression('/^[A-Z2-9]{8}$/', $mail->discordCode);
 
             return $mail->hasTo($user->email);
         });

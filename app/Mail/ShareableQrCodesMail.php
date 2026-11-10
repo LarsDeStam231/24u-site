@@ -14,7 +14,7 @@ class ShareableQrCodesMail extends Mailable
     use Queueable, SerializesModels;
 
     /** @param array<string, array{url: string, image: string}> $codes */
-    public function __construct(public ?string $name, public array $codes) {}
+    public function __construct(public ?string $name, public array $codes, public ?string $discordCode = null) {}
 
     /**
      * Get the message envelope.

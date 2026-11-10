@@ -45,6 +45,8 @@ class User extends Authenticatable implements HasPasskeys
         'login_token_hash',
         'attendance_token',
         'donation_token',
+        'discord_code',
+        'discord_user_id',
     ];
 
     /**
@@ -57,6 +59,7 @@ class User extends Authenticatable implements HasPasskeys
         return [
             'email_verified_at' => 'datetime',
             'qr_codes_emailed_at' => 'datetime',
+            'discord_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_present' => 'boolean',
         ];

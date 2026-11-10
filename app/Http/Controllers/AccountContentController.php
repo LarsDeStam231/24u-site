@@ -9,6 +9,7 @@ use App\Models\Sponsor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -129,6 +130,10 @@ class AccountContentController extends Controller
     {
         Gate::authorize('manage-event-content');
         $data = $this->validateSponsor($request);
+        $sponsor = Sponsor::query()->create([
+            ...$this->sponsorAttributes($data),
+            'logo_path' => $request->file('logo')?->store('sponsors', 'public'),
+        ]);
         $sponsor = Sponsor::query()->create($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor toegevoegd.'], 201);
@@ -138,6 +143,20 @@ class AccountContentController extends Controller
     {
         Gate::authorize('manage-event-content');
         $data = $this->validateSponsor($request, $sponsor);
+        $previousLogoPath = $sponsor->logo_path;
+        $sponsor->fill($this->sponsorAttributes($data));
+
+        if ($request->hasFile('logo')) {
+            $sponsor->logo_path = $request->file('logo')->store('sponsors', 'public');
+        } elseif ($request->boolean('removeLogo')) {
+            $sponsor->logo_path = null;
+        }
+
+        $sponsor->save();
+
+        if ($previousLogoPath && $previousLogoPath !== $sponsor->logo_path) {
+            Storage::disk('public')->delete($previousLogoPath);
+        }
         $sponsor->update($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor bijgewerkt.']);
@@ -147,6 +166,10 @@ class AccountContentController extends Controller
     {
         Gate::authorize('manage-event-content');
         $sponsor->delete();
+
+        if ($sponsor->logo_path) {
+            Storage::disk('public')->delete($sponsor->logo_path);
+        }
 
         return response()->json(['message' => 'Sponsor verwijderd.']);
     }
@@ -187,6 +210,7 @@ class AccountContentController extends Controller
         ];
     }
 
+    /** @return array{companyName: string, sponsorshipType: string, companyType?: ?string, logo?: mixed, removeLogo?: bool} */
     /** @return array{companyName: string, sponsorshipType: string, companyType?: ?string} */
     private function validateSponsor(Request $request, ?Sponsor $sponsor = null): array
     {
@@ -194,6 +218,8 @@ class AccountContentController extends Controller
             'companyName' => ['required', 'string', 'max:255', Rule::unique('sponsor', 'company_name')->ignore($sponsor?->id)],
             'sponsorshipType' => ['required', Rule::in(['gold', 'silver', 'bronze'])],
             'companyType' => ['nullable', Rule::in(['School', 'Supermarkt', 'Horeca', 'Bakkerij'])],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:4096'],
+            'removeLogo' => ['nullable', 'boolean'],
         ]);
     }
 
@@ -240,6 +266,7 @@ class AccountContentController extends Controller
         ];
     }
 
+    /** @return array{id: int, companyName: string, sponsorshipType: string, companyType: string, logoUrl: ?string} */
     /** @return array{id: int, companyName: string, sponsorshipType: string, companyType: string} */
     private function sponsorData(Sponsor $sponsor): array
     {
@@ -248,6 +275,7 @@ class AccountContentController extends Controller
             'companyName' => $sponsor->company_name,
             'sponsorshipType' => $sponsor->sponsorship_type,
             'companyType' => $sponsor->company_type,
+            'logoUrl' => $sponsor->logoUrl(),
         ];
     }
 }

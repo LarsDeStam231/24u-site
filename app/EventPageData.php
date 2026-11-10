@@ -65,12 +65,12 @@ class EventPageData
             $sponsors = Sponsor::query()
                 ->orderBy('company_name')
                 ->orderBy('id')
-                ->get(['company_name', 'sponsorship_type'])
+                ->get(['company_name', 'sponsorship_type', 'logo_path'])
                 ->groupBy('sponsorship_type');
 
             foreach ($event['sponsorTiers'] as $index => $tier) {
                 $event['sponsorTiers'][$index]['sponsors'] = $sponsors->get($tier['id'], collect())
-                    ->map(fn (Sponsor $sponsor): array => ['name' => $sponsor->company_name, 'url' => null, 'logo' => null])
+                    ->map(fn (Sponsor $sponsor): array => ['name' => $sponsor->company_name, 'url' => null, 'logo' => $sponsor->logoUrl()])
                     ->values()
                     ->all();
             }

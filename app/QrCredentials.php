@@ -62,6 +62,24 @@ class QrCredentials
         $user->save();
     }
 
+    /**
+     * Give the user a unique, easy to type code to verify themselves with the Discord bot.
+     */
+    public function ensureDiscordCode(User $user): string
+    {
+        while ($user->discord_code === null) {
+            $code = Str::upper(Str::password(8, letters: true, numbers: true, symbols: false, spaces: false));
+            $code = strtr($code, ['0' => '2', 'O' => 'P', '1' => '3', 'I' => 'J', 'L' => 'K']);
+
+            if (! User::query()->where('discord_code', $code)->exists()) {
+                $user->discord_code = $code;
+                $user->save();
+            }
+        }
+
+        return $user->discord_code;
+    }
+
     public function emailShareableCodesOnce(User $user): void
     {
         if ($user->qr_codes_emailed_at) {
@@ -79,7 +97,7 @@ class QrCredentials
                 $codes[$key] = ['url' => $url, 'image' => $this->images->pngForUrl($url)];
             }
 
-            Mail::to($user->email)->send(new ShareableQrCodesMail($user->name, $codes));
+            Mail::to($user->email)->send(new ShareableQrCodesMail($user->name, $codes, $this->ensureDiscordCode($user)));
             $user->qr_codes_emailed_at = now();
             $user->save();
         });

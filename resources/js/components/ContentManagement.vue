@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import ActionButton from './ui/ActionButton.vue';
 import SectionTabs from './ui/SectionTabs.vue';
@@ -50,8 +50,12 @@ function blankChallengeForm() {
 }
 
 function blankSponsorForm() {
-    return { id: null, companyName: '', sponsorshipType: 'bronze', companyType: '' };
+    return { id: null, companyName: '', sponsorshipType: 'bronze', companyType: '', logoUrl: null, logo: null, removeLogo: false };
 }
+
+const sponsorLogoInput = ref(null);
+const sponsorLogoPreview = ref('');
+const currentSponsorLogo = computed(() => sponsorLogoPreview.value || (sponsorForm.value.removeLogo ? '' : sponsorForm.value.logoUrl));
 
 async function loadContent() {
     loading.value = true;
@@ -156,12 +160,39 @@ async function deleteChallenge(challenge) {
     if (deleted && challengeForm.value.id === challenge.id) cancelChallengeEdit();
 }
 
+function clearSponsorLogoPreview() {
+    if (sponsorLogoPreview.value) URL.revokeObjectURL(sponsorLogoPreview.value);
+    sponsorLogoPreview.value = '';
+    if (sponsorLogoInput.value) sponsorLogoInput.value.value = '';
+}
+
+function resetSponsorLogo() {
+  clearSponsorLogoPreview();
+  if (sponsorLogoInput.value) sponsorLogoInput.value.value = '';
+}
+
 function editSponsor(sponsor) {
+    resetSponsorLogo();
     sponsorForm.value = { ...blankSponsorForm(), ...sponsor };
 }
 
 function cancelSponsorEdit() {
+    resetSponsorLogo();
     sponsorForm.value = blankSponsorForm();
+}
+
+function selectSponsorLogo(event) {
+    const [file] = event.target.files;
+    clearSponsorLogoPreview();
+    sponsorForm.value.logo = file || null;
+    sponsorForm.value.removeLogo = false;
+    if (file) sponsorLogoPreview.value = URL.createObjectURL(file);
+}
+
+function removeSponsorLogo() {
+    resetSponsorLogo();
+    sponsorForm.value.logo = null;
+    sponsorForm.value.removeLogo = true;
 }
 
 async function saveSponsor() {
@@ -169,11 +200,17 @@ async function saveSponsor() {
     const endpoint = sponsor.id
         ? props.endpoints.sponsorUpdate.replace('__SPONSOR__', sponsor.id)
         : props.endpoints.sponsorStore;
-    const method = sponsor.id ? 'patch' : 'post';
-    const { id, ...data } = sponsor;
+    const data = new FormData();
+    data.append('companyName', sponsor.companyName);
+    data.append('sponsorshipType', sponsor.sponsorshipType);
+    data.append('companyType', sponsor.companyType || '');
+    if (sponsor.logo) data.append('logo', sponsor.logo);
+    if (sponsor.removeLogo) data.append('removeLogo', '1');
+    // PHP only parses file uploads on POST, so updates use Laravel's method spoofing.
+    if (sponsor.id) data.append('_method', 'PATCH');
 
     await perform(async () => {
-        const response = await axios[method](endpoint, data);
+        const response = await axios.post(endpoint, data);
         cancelSponsorEdit();
         return response;
     });
@@ -191,22 +228,24 @@ onMounted(loadContent);
 </script>
 
 <template>
-    <section class="account-card account-management grid gap-5" aria-labelledby="content-management-title">
+    <section class="content-card grid gap-5 p-6" aria-labelledby="content-management-title">
         <header class="grid gap-2">
-            <p class="account-eyebrow">Websitebeheer</p>
-            <h2 id="content-management-title">Website-inhoud beheren</h2>
-            <p class="account-muted">Pas de inhoud aan. Opgeslagen wijzigingen zijn direct zichtbaar op de website.</p>
+            <p class="section-label">Beheer</p>
+            <h2 id="content-management-title" class="text-2xl">Website-inhoud beheren</h2>
+            <p class="text-slate-600">Wijzigingen worden direct zichtbaar op de publieke website.</p>
         </header>
 
         <p v-if="message" role="status" class="rounded border border-green-300 bg-green-50 p-3 text-green-950">{{ message }}</p>
         <p v-if="error" role="alert" class="rounded border border-red-300 bg-red-50 p-3 text-red-950">{{ error }}</p>
 
-        <SectionTabs id="website" v-model="activeSection" :items="sections" label="Beheeronderdelen" />
+        <nav class="flex flex-wrap gap-2" aria-label="Beheeronderdelen">
+            <button v-for="section in sections" :key="section.id" type="button" class="rounded-full border px-4 py-2 font-semibold" :class="activeSection === section.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700'" :aria-pressed="activeSection === section.id" @click="activeSection = section.id">{{ section.label }}</button>
+        </nav>
 
         <p v-if="loading" class="text-slate-600">Beheerinformatie laden…</p>
 
-        <div v-else :id="`website-panel-${activeSection}`" role="tabpanel" :aria-labelledby="`website-tab-${activeSection}`">
-            <div v-if="activeSection === 'program'" class="grid items-start gap-5 lg:grid-cols-2">
+        <template v-else>
+            <div v-if="activeSection === 'program'" class="grid gap-5">
                 <form class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveProgramItem">
                     <h3 class="text-lg font-semibold">{{ programForm.id ? 'Programmaonderdeel aanpassen' : 'Programmaonderdeel toevoegen' }}</h3>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -247,8 +286,8 @@ onMounted(loadContent);
                 </div>
             </div>
 
-            <div v-else-if="activeSection === 'challenges'" class="grid items-start gap-5 lg:grid-cols-2">
-                <p v-if="!canManageChallengeLadder" class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 lg:col-span-2">Organisatie kan challengenamen en beschrijvingen aanpassen. Bedragen en de ladder zelf zijn alleen door een admin te wijzigen.</p>
+            <div v-else-if="activeSection === 'challenges'" class="grid gap-5">
+                <p v-if="!canManageChallengeLadder" class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">Organisatie kan challengenamen en beschrijvingen aanpassen. Bedragen en de ladder zelf zijn alleen door een admin te wijzigen.</p>
                 <form v-if="canManageChallengeLadder || challengeForm.id" class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveChallenge">
                     <h3 class="text-lg font-semibold">{{ challengeForm.id ? 'Challenge aanpassen' : 'Challenge toevoegen' }}</h3>
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -276,13 +315,22 @@ onMounted(loadContent);
                 </div>
             </div>
 
-            <div v-else class="grid items-start gap-5 lg:grid-cols-2">
+            <div v-else class="grid gap-5">
                 <form class="grid gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="saveSponsor">
                     <h3 class="text-lg font-semibold">{{ sponsorForm.id ? 'Sponsor aanpassen' : 'Sponsor toevoegen' }}</h3>
-                    <div class="grid gap-4">
+                    <div class="grid gap-4 sm:grid-cols-3">
                         <label class="grid gap-1">Bedrijfsnaam<input v-model="sponsorForm.companyName" class="w-full rounded border border-slate-300 bg-white p-2" maxlength="255" required /></label>
                         <label class="grid gap-1">Sponsorniveau<select v-model="sponsorForm.sponsorshipType" class="w-full rounded border border-slate-300 bg-white p-2"><option v-for="type in sponsorshipTypes" :key="type.value" :value="type.value">{{ type.label }}</option></select></label>
                         <label class="grid gap-1">Type organisatie<select v-model="sponsorForm.companyType" class="w-full rounded border border-slate-300 bg-white p-2"><option v-for="type in companyTypes" :key="type.label" :value="type.value">{{ type.label }}</option></select></label>
+                    </div>
+                    <div class="flex flex-wrap items-end gap-4">
+                        <div v-if="currentSponsorLogo" class="flex h-24 w-40 items-center justify-center rounded border border-slate-200 bg-white p-2">
+                            <img :src="currentSponsorLogo" :alt="`Logo van ${sponsorForm.companyName || 'de sponsor'}`" class="max-h-full max-w-full object-contain" />
+                        </div>
+                        <label class="grid gap-1">Logo / foto (JPG, PNG, WEBP of GIF, max. 4 MB)
+                            <input ref="sponsorLogoInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="w-full rounded border border-slate-300 bg-white p-2" @change="selectSponsorLogo" />
+                        </label>
+                        <ActionButton v-if="currentSponsorLogo" variant="outline" :disabled="busy" @click="removeSponsorLogo">Logo verwijderen</ActionButton>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <ActionButton type="submit" :disabled="busy">{{ sponsorForm.id ? 'Wijzigingen opslaan' : 'Sponsor toevoegen' }}</ActionButton>
@@ -291,9 +339,12 @@ onMounted(loadContent);
                 </form>
                 <div v-if="content.sponsors.length" class="grid gap-3">
                     <article v-for="sponsor in content.sponsors" :key="sponsor.id" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 p-4">
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <img v-if="sponsor.logoUrl" :src="sponsor.logoUrl" :alt="`Logo van ${sponsor.companyName}`" class="h-12 w-20 rounded border border-slate-200 bg-white object-contain p-1" />
+                            <div>
                             <p class="font-semibold">{{ sponsor.companyName }}</p>
                             <p class="text-sm text-slate-600">{{ sponsor.sponsorshipType }} · {{ sponsor.companyType || 'Overig' }}</p>
+                            </div>
                         </div>
                         <div class="flex gap-2">
                             <ActionButton variant="outline" :disabled="busy" @click="editSponsor(sponsor)">Aanpassen</ActionButton>
@@ -303,6 +354,6 @@ onMounted(loadContent);
                 </div>
                 <p v-else class="text-slate-600">Er zijn nog geen sponsoren toegevoegd.</p>
             </div>
-        </div>
+        </template>
     </section>
 </template>

@@ -19,6 +19,13 @@
     <p><img src="{{ $message->embedData($codes['foundationDonation']['image'], 'wensstichting-qr.png', 'image/png') }}" alt="QR-code om te doneren aan Wensstichting Drenthe" width="264" height="264"></p>
     <p><a href="{{ $codes['foundationDonation']['url'] }}">Doneer aan Wensstichting Drenthe</a></p>
 
+    @if ($discordCode)
+        <h2>Discord</h2>
+        <p>Join onze Discord-server en stuur de bot deze code in een privébericht om toegang te krijgen:</p>
+        <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">{{ $discordCode }}</p>
+        <p>Deze code is persoonlijk: deel hem niet met anderen. Je vindt hem ook op je accountpagina.</p>
+    @endif
+
     <p>Je vindt beide QR-codes ook als PNG-bijlage bij deze mail. Je mag ze opslaan, printen en delen. Deze QR-codes geven geen toegang tot jouw account.</p>
     <p>Groeten,<br>DCTerra 24 Uur Live</p>
 </body>
