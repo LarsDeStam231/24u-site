@@ -85,16 +85,16 @@ class EventPagesTest extends TestCase
             ->assertDontSee('>Registreren</a>', false);
     }
 
-    public function test_preview_content_comes_from_laravel_configuration_without_database_tables(): void
+    public function test_event_details_come_from_configuration_while_the_counter_uses_real_donations(): void
     {
-        config(['event.event.name' => 'Het aangepaste evenement', 'event.event.fundraising.raisedCents' => 12345]);
+        config(['event.event.name' => 'Het aangepaste evenement']);
+        Donation::factory()->completed()->create(['amount' => '123.45']);
 
         $response = $this->get('/');
 
         $response->assertOk()
             ->assertViewHas('pageData.event.name', 'Het aangepaste evenement')
             ->assertViewHas('pageData.event.fundraising.raisedCents', 12345)
-            ->assertViewHas('pageData.event.fundraising.isPreview', true)
             ->assertViewHas('pageData.event.images.hero', asset('assets/event/studio-hero.jpg'));
     }
 
@@ -112,7 +112,6 @@ class EventPagesTest extends TestCase
 
     public function test_live_counter_only_includes_completed_donations_without_exposing_donor_details(): void
     {
-        config(['event.event.fundraising.isPreview' => false]);
         $donor = Donor::factory()->create(['email' => 'private-donor@example.com', 'phone' => '0612345678']);
         Donation::factory()->for($donor)->completed()->count(2)
             ->sequence(['amount' => '25.25'], ['amount' => '10.10'])->create();
@@ -125,7 +124,6 @@ class EventPagesTest extends TestCase
 
         $response->assertOk()
             ->assertViewHas('pageData.event.fundraising.raisedCents', 3535)
-            ->assertViewHas('pageData.event.fundraising.isPreview', false)
             ->assertDontSee('private-donor@example.com')
             ->assertDontSee('0612345678')
             ->assertDontSee('private-payment-id');
@@ -133,7 +131,6 @@ class EventPagesTest extends TestCase
 
     public function test_sponsors_are_loaded_from_the_existing_table_and_grouped_in_name_order(): void
     {
-        config(['event.event.fundraising.isPreview' => false]);
         Sponsor::factory()->count(3)->sequence(
             ['company_name' => 'Zebra', 'sponsorship_type' => 'gold'],
             ['company_name' => 'Alfa', 'sponsorship_type' => 'gold'],
@@ -153,8 +150,6 @@ class EventPagesTest extends TestCase
 
     public function test_live_counter_starts_at_zero_when_there_are_no_donations(): void
     {
-        config(['event.event.fundraising.isPreview' => false]);
-
         $response = $this->get('/doneren');
 
         $response->assertOk()->assertViewHas('pageData.event.fundraising.raisedCents', 0);

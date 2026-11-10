@@ -134,6 +134,7 @@ class AccountContentController extends Controller
             ...$this->sponsorAttributes($data),
             'logo_path' => $request->file('logo')?->store('sponsors', 'public'),
         ]);
+        $sponsor = Sponsor::query()->create($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor toegevoegd.'], 201);
     }
@@ -156,6 +157,7 @@ class AccountContentController extends Controller
         if ($previousLogoPath && $previousLogoPath !== $sponsor->logo_path) {
             Storage::disk('public')->delete($previousLogoPath);
         }
+        $sponsor->update($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor bijgewerkt.']);
     }
@@ -209,6 +211,7 @@ class AccountContentController extends Controller
     }
 
     /** @return array{companyName: string, sponsorshipType: string, companyType?: ?string, logo?: mixed, removeLogo?: bool} */
+    /** @return array{companyName: string, sponsorshipType: string, companyType?: ?string} */
     private function validateSponsor(Request $request, ?Sponsor $sponsor = null): array
     {
         return $request->validate([
@@ -264,6 +267,7 @@ class AccountContentController extends Controller
     }
 
     /** @return array{id: int, companyName: string, sponsorshipType: string, companyType: string, logoUrl: ?string} */
+    /** @return array{id: int, companyName: string, sponsorshipType: string, companyType: string} */
     private function sponsorData(Sponsor $sponsor): array
     {
         return [

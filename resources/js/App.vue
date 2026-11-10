@@ -11,6 +11,7 @@ import AboutPage from './pages/AboutPage.vue';
 import QrPage from './pages/QrPage.vue';
 import RegistrationPage from './pages/RegistrationPage.vue';
 import PasswordLoginPage from './pages/PasswordLoginPage.vue';
+import PasswordSetupPage from './pages/PasswordSetupPage.vue';
 
 const props = defineProps({
     page: { type: Object, required: true },
@@ -40,6 +41,7 @@ const pages = {
     qr: QrPage,
     registration: RegistrationPage,
     'password-login': PasswordLoginPage,
+    'password-setup': PasswordSetupPage,
 };
 </script>
 

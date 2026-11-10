@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import ActionButton from './ui/ActionButton.vue';
+import SectionTabs from './ui/SectionTabs.vue';
 import { formatMoney } from '../utils/format';
 
 const props = defineProps({
