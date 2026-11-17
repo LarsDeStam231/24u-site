@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\FundraisingTotal;
 use App\Models\User;
 use App\QrCredentials;
+use App\QrImage;
 use App\QrPageData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,9 +35,6 @@ class QrAccountController extends Controller
             'account' => ['name' => $user->name, 'email' => $user->email, 'role' => $user->role,
                 'isPresent' => $user->is_present, 'studentNumber' => $user->student_number,
                 'discordCode' => $credentials->ensureDiscordCode($user), 'discordLinked' => $user->discord_user_id !== null],
-            'codes' => $codes,
-            'shareableCodes' => $shareableCodes,
-                'isPresent' => $user->is_present, 'studentNumber' => $user->student_number],
             'codes' => $codes,
             'shareableCodes' => $shareableCodes,
             'flyer' => $flyer,

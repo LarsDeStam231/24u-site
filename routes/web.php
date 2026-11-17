@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\AccountContentController;
+use App\Http\Controllers\AccountDonationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\DonationController;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/livestream', [LivestreamController::class, 'index'])->name('livestream.index');
 Route::get('/doneren', [DonationController::class, 'index'])->name('donations.index');
+Route::post('/doneren', [DonationController::class, 'store'])->middleware('throttle:10,1')->name('donations.store');
 Route::get('/donations/total', [DonationController::class, 'total'])->name('donations.total');
 Route::get('/challenges', [ChallengeController::class, 'index'])->name('challenges.index');
 Route::get('/programma', [ProgramController::class, 'index'])->name('program.index');
@@ -62,12 +64,14 @@ Route::middleware(ProtectQrResponses::class)->group(function (): void {
     Route::post('/passkey-koppelen', [PasskeyRegistrationController::class, 'store'])->middleware('throttle:qr-login')->name('passkeys.registration.store');
     Route::get('/aanwezigheid', [AttendanceController::class, 'index'])->name('attendance.index');
     Route::post('/uitloggen', [QrSessionController::class, 'destroy'])->middleware('auth')->name('logout');
+    Route::get('/doneren/bedankt/{donation}', [DonationController::class, 'show'])->middleware('signed:relative')->name('donations.return');
     Route::get('/studenten/doneren/{student:donation_token}', [StudentDonationController::class, 'show'])
         ->where('student', '[A-Za-z0-9]{64}')->name('students.donation');
 
     Route::middleware(['auth', EnsureApprovedAccount::class])->group(function (): void {
         Route::get('/account', [QrAccountController::class, 'index'])->name('account.index');
         Route::get('/account/donations/total', [QrAccountController::class, 'donationTotal'])->name('account.donations.total');
+        Route::get('/account/donaties', [AccountDonationController::class, 'index'])->name('account.donations.index');
         Route::get('/account/content', [AccountContentController::class, 'index'])->name('account.content.index');
         Route::post('/account/content/program', [AccountContentController::class, 'storeProgramItem'])->name('account.content.program.store');
         Route::patch('/account/content/program/{programItem}', [AccountContentController::class, 'updateProgramItem'])->name('account.content.program.update');

@@ -14,6 +14,7 @@ class StudentDonationController extends Controller
 
         return $pages->render('donation', 'Steun '.$student->name, [
             'studentName' => $student->name,
+            'studentToken' => $student->donation_token,
             'donateUrl' => config('event.event.foundation.donateUrl'),
             'rankingAvailable' => false,
         ]);

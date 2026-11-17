@@ -25,6 +25,7 @@ return [
         ],
         'fundraising' => ['goalCents' => 1000000],
         'studentFundraising' => ['goalCents' => 50000],
+        'donation' => ['minCents' => 100, 'maxCents' => 500000],
         'stream' => ['live' => false, 'url' => 'https://www.youtube.com/@DCterra24uur'],
         'highlights' => [
             ['icon' => 'game', 'title' => '24 UUR LIVE', 'text' => 'Non-stop gaming en entertainment'],
@@ -113,7 +114,7 @@ return [
         ],
         'donations' => [
             'route' => 'donations.index', 'label' => 'Doneren', 'heading' => 'Help wensen mogelijk maken.',
-            'description' => 'Steun Wensstichting Drenthe. Doneer via de officiële stichting en help bijzondere wensen mogelijk maken.',
+            'description' => 'Steun Wensstichting Drenthe. Doneer en help bijzondere wensen mogelijk maken.',
         ],
         'challenges' => [
             'route' => 'challenges.index', 'label' => 'Challenges', 'heading' => 'Hoe meer we ophalen, hoe meer we doen!',

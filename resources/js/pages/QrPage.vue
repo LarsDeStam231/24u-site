@@ -8,6 +8,7 @@ import QrCards from '../components/ui/QrCards.vue';
 import LoginForm from '../components/ui/LoginForm.vue';
 import PasskeyPhone from '../components/ui/PasskeyPhone.vue';
 import PasskeySettings from '../components/ui/PasskeySettings.vue';
+import DonationForm from '../components/home/DonationForm.vue';
 
 const props = defineProps({
     page: { type: Object, required: true }, event: { type: Object, required: true },
@@ -195,7 +196,10 @@ async function recordAttendance(action) {
             </section>
         </template>
 
-        <section v-if="qr.mode === 'donation'" class="content-card mx-auto grid w-full max-w-2xl gap-5 p-6">
+        <div v-if="qr.mode === 'donation' && links.donationStore" class="mx-auto w-full max-w-2xl">
+            <DonationForm :endpoint="links.donationStore" :foundation="event.foundation" :limits="event.donation" :student-token="qr.studentToken" :student-name="qr.studentName" />
+        </div>
+        <section v-else-if="qr.mode === 'donation'" class="content-card mx-auto grid w-full max-w-2xl gap-5 p-6">
             <h2 class="text-3xl">Steun de actie van {{ qr.studentName }}</h2>
             <p>Samen helpen we {{ event.foundation.name }} tijdens DCTerra 24 Uur Live.</p>
             <ActionButton :href="qr.donateUrl" rel="noopener noreferrer">Doneer via het goede doel</ActionButton>

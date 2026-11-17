@@ -14,6 +14,7 @@ class EventPageData
         private Request $request,
         private ChallengeLadder $challengeLadder,
         private FundraisingTotal $fundraisingTotal,
+        private DonationPayments $donationPayments,
     ) {}
 
     /**
@@ -90,6 +91,10 @@ class EventPageData
         $links['qrLogin'] = route('qr.login');
         $links['registration'] = route('registration.create');
         $links['donationTotal'] = route('donations.total');
+
+        if ($this->donationPayments->isConfigured()) {
+            $links['donationStore'] = route('donations.store');
+        }
 
         $accountRoutes = $this->request->user()
             ? ['account.index' => 'Mijn account']

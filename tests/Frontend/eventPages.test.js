@@ -49,6 +49,7 @@ async function compileComponent(filename) {
 
 const DonationCounter = await loadComponent('components/home/DonationCounter.vue');
 const DonationCard = await loadComponent('components/home/DonationCard.vue');
+const DonationForm = await loadComponent('components/home/DonationForm.vue');
 const ChallengesPage = await loadComponent('pages/ChallengesPage.vue');
 const ProgramPage = await loadComponent('pages/ProgramPage.vue');
 const ProgramCard = await loadComponent('components/home/ProgramCard.vue');
@@ -311,6 +312,59 @@ test('the donation card opens the official donation page without a simulated che
     assert.doesNotMatch(text(root), /mollie|Betaalkoppeling in voorbereiding|Voorbeeld/);
 });
 
+test('the donation card links to the on-site form once online payments are available', (t) => {
+    const foundation = { name: 'Wensstichting Drenthe', donateUrl: 'https://wensstichtingdrenthe.nl/doneren' };
+    const { root } = mount(t, DonationCard, { foundation, donatePage: '/doneren' });
+    const donationLink = descendants(root, element => element.type === 'a' && text(element) === 'Doneer nu')[0];
+
+    assert.equal(donationLink.props.href, '/doneren');
+    assert.doesNotMatch(text(root), /niet automatisch in deze teller verwerkt/);
+});
+
+function donationForm(t, post, props = {}) {
+    const originalPost = axios.post;
+    const previousWindow = globalThis.window;
+    const visited = [];
+    axios.post = post;
+    globalThis.window = { location: { assign: url => visited.push(url) } };
+    after(t, () => { axios.post = originalPost; globalThis.window = previousWindow; });
+    const { root } = mount(t, DonationForm, {
+        endpoint: '/doneren', foundation: { name: 'Wensstichting Drenthe' }, limits: { minCents: 100, maxCents: 500000 }, ...props,
+    });
+    const submit = () => descendants(root, element => element.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+
+    return { root, visited, submit };
+}
+
+test('the donation form sends the chosen amount in cents and continues to the checkout', async (t) => {
+    const sent = [];
+    const { root, visited, submit } = donationForm(t, async (url, payload) => {
+        sent.push({ url, payload });
+        return { data: { checkoutUrl: 'https://www.mollie.com/checkout/test' } };
+    }, { studentToken: 'b'.repeat(64), studentName: 'Sam' });
+
+    descendants(root, element => element.type === 'button' && /25/.test(text(element)))[0].props.onClick();
+    await nextTick();
+    await submit();
+
+    assert.match(text(root), /Steun de actie van Sam/);
+    assert.deepEqual(sent, [{ url: '/doneren', payload: { amountCents: 2500, name: '', email: '', anonymous: false, student: 'b'.repeat(64) } }]);
+    assert.deepEqual(visited, ['https://www.mollie.com/checkout/test']);
+});
+
+test('the donation form shows server errors and lets the donor try again', async (t) => {
+    const { root, visited, submit } = donationForm(t, async () => {
+        throw { response: { status: 422, data: { errors: { email: ['Vul een geldig e-mailadres in.'] } } } };
+    });
+
+    await submit();
+    await nextTick();
+
+    assert.match(text(root), /Vul een geldig e-mailadres in\./);
+    assert.equal(descendants(root, element => element.type === 'button' && element.props.type === 'submit')[0].props.disabled, false);
+    assert.deepEqual(visited, []);
+});
+
 test('challenge filters and the next milestone update when the polled total changes', async (t) => {
     let total = 0;
     const flow = browser(t, () => response(total));
@@ -551,9 +605,10 @@ test('sponsor editing sends the selected tier and organization type', async (t) 
 
     await submit(root);
 
-    assert.deepEqual(requests[0], {
-        method: 'patch', url: '/account/content/sponsors/3',
-        payload: { companyName: 'Sponsor A', sponsorshipType: 'silver', companyType: 'Horeca' },
+    assert.equal(requests[0].method, 'post');
+    assert.equal(requests[0].url, '/account/content/sponsors/3');
+    assert.deepEqual(Object.fromEntries(requests[0].payload), {
+        companyName: 'Sponsor A', sponsorshipType: 'silver', companyType: 'Horeca', _method: 'PATCH',
     });
 });
 
@@ -653,6 +708,44 @@ test('account navigation loads registration management once and preserves edited
     await clickButton(root, 'Goedkeuren en uitnodigen');
     assert.deepEqual(saved, [{ url: '/account/aanvragen/1', payload: { role: 'student', status: 'approved' } }]);
     assert.match(text(root), /Goedgekeurd\./);
+});
+
+test('the donations tab is admin-only and lists donations with totals and a status filter', async (t) => {
+    const originalGet = axios.get;
+    const requests = [];
+    axios.get = async (url, config) => {
+        requests.push({ url, params: config.params });
+        return { data: {
+            data: [{ id: 7, amountCents: 1250, status: 'completed', paymentMethod: 'ideal', anonymous: true, donorName: 'Dana Donateur', donorEmail: 'dana@example.com', studentName: 'Sam Student', createdAt: '2026-11-20T12:00:00+00:00' }],
+            totals: { completedCents: 1250, completedCount: 1 }, prev_page_url: null, next_page_url: '/account/donaties?page=2',
+        } };
+    };
+    after(t, () => { axios.get = originalGet; });
+    const hidden = mount(t, AccountDashboard, { qr: accountData({ canManage: true }) });
+    assert.equal(descendants(hidden.root, element => element.type === 'button' && text(element) === 'Donaties').length, 0);
+    const endpoints = { ...accountData().endpoints, donations: '/account/donaties' };
+    const { root } = mount(t, AccountDashboard, { qr: accountData({ canViewDonations: true, endpoints }) });
+    assert.equal(requests.length, 0);
+
+    await clickButton(root, 'Donaties');
+    await flushUpdates();
+
+    assert.deepEqual(requests, [{ url: '/account/donaties', params: {} }]);
+    assert.match(text(root), /Totaal betaald€\s12,50/);
+    assert.match(text(root), /Dana Donateur \(anoniem op de site\)/);
+    assert.match(text(root), /dana@example\.com/);
+    assert.match(text(root), /Sam Student/);
+    assert.match(text(root), /Betaald/);
+
+    field(root, 'Status').props.onChange({ target: { value: 'failed' } });
+    await flushUpdates();
+    await clickButton(root, 'Volgende');
+    await flushUpdates();
+
+    assert.deepEqual(requests.slice(1), [
+        { url: '/account/donaties', params: { status: 'failed' } },
+        { url: '/account/donaties?page=2', params: {} },
+    ]);
 });
 
 test('QR selection shows only one code and labels the attendance QR as private', async (t) => {

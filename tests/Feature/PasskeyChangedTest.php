@@ -26,8 +26,8 @@ class PasskeyChangedTest extends TestCase
     public static function passkeyChanges(): array
     {
         return [
-            'added' => ['toegevoegd', 'Er is een passkey toegevoegd aan jouw account: Privé telefoon.'],
-            'removed' => ['verwijderd', 'Er is een passkey verwijderd van jouw account: Privé telefoon.'],
+            'added' => ['toegevoegd', 'Er is een online sleutel toegevoegd aan jouw account: Privé telefoon.'],
+            'removed' => ['verwijderd', 'Er is een online sleutel verwijderd van jouw account: Privé telefoon.'],
         ];
     }
 
@@ -39,17 +39,17 @@ class PasskeyChangedTest extends TestCase
 
         $email = app(MailChannel::class)->send($user, new PasskeyChanged($change, 'Privé telefoon'))->getOriginalMessage();
 
-        $this->assertSame('Passkey '.$change.' — DCTerra 24 Uur Live', $email->getSubject());
+        $this->assertSame('Online sleutel '.$change.' — DCTerra 24 Uur Live', $email->getSubject());
         $this->assertSame('DCTerra 24 Uur Live', $email->getFrom()[0]->getName());
         $this->assertSame(config('mail.from.address'), $email->getFrom()[0]->getAddress());
         $this->assertSame($user->email, $email->getTo()[0]->getAddress());
         foreach ([$email->getHtmlBody(), $email->getTextBody()] as $body) {
             $this->assertStringContainsString('Hallo!', $body);
             $this->assertStringContainsString($expectedDescription, $body);
-            $this->assertStringContainsString('Heb je dit niet zelf gedaan? Wijzig je wachtwoord en verwijder onbekende passkeys.', $body);
+            $this->assertStringContainsString('Heb je dit niet zelf gedaan? Wijzig je wachtwoord en verwijder onbekende online sleutels.', $body);
             $this->assertStringContainsString('Met vriendelijke groet,', $body);
             $this->assertStringContainsString('© 2026 DCTerra 24 Uur Live. Alle rechten voorbehouden.', $body);
-            $this->assertStringContainsString('Werkt de knop "Passkeys beheren" niet? Kopieer en plak deze link in je browser:', $body);
+            $this->assertStringContainsString('Werkt de knop "Online sleutels beheren" niet? Kopieer en plak deze link in je browser:', $body);
             $this->assertStringContainsString(route('passkeys.index'), $body);
             $this->assertStringNotContainsString('Laravel', $body);
         }

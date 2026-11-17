@@ -761,6 +761,42 @@
         color: var(--event-muted);
     }
 
+    .donation-presets {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+        gap: 0.6rem;
+    }
+
+    .donation-preset {
+        padding: 0.75rem 0.5rem;
+        border: 1px solid var(--event-border);
+        border-radius: 0.3rem;
+        background: white;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .donation-preset:hover {
+        border-color: var(--event-red);
+    }
+
+    .donation-preset[aria-pressed='true'] {
+        border-color: var(--event-red);
+        background: #fff0f3;
+        color: var(--event-red-dark);
+    }
+
+    .donation-result {
+        display: grid;
+        gap: 0.5rem;
+        padding: clamp(1.25rem, 2vw, 2rem);
+        border-inline-start: 0.35rem solid var(--event-red);
+    }
+
+    .donation-result h2 {
+        margin: 0;
+    }
+
     .form-error {
         color: #b0002b;
         font-size: 0.85em;
@@ -1453,7 +1489,7 @@
         align-content: start;
     }
 
-    .prose-card, .full-program, .detail-columns > .donation-card {
+    .prose-card, .full-program, .detail-columns > .donation-card, .detail-stack > .donation-card {
         padding: clamp(1.25rem, 2vw, 2rem);
     }
 
