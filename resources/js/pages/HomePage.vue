@@ -29,7 +29,7 @@ function updateRaisedCents(amount) {
         <div class="home-content page-container">
             <HomeContentGrid>
                 <LivestreamCard :stream="event.stream" :image="event.images.livestream" :starts-at="event.startsAt" />
-                <DonationCard :foundation="event.foundation" />
+                <DonationCard :foundation="event.foundation" :donate-page="links.donationStore ? links.donations : null" />
                 <ChallengesCard :challenges="event.challenges" :raised-cents="raisedCents" :href="links.challenges" />
                 <ProgramCard :items="event.schedule" :href="links.program" />
             </HomeContentGrid>

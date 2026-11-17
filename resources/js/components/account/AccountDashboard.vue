@@ -6,6 +6,7 @@ import AppIcon from '../ui/AppIcon.vue';
 import SectionTabs from '../ui/SectionTabs.vue';
 import ContentManagement from '../ContentManagement.vue';
 import DonationCounter from '../home/DonationCounter.vue';
+import AccountDonations from './AccountDonations.vue';
 import AccountRegistrations from './AccountRegistrations.vue';
 import AccountQrCodes from './AccountQrCodes.vue';
 import PersonalFlyer from './PersonalFlyer.vue';
@@ -19,6 +20,7 @@ const roles = { student: 'Student', organisatie: 'Organisatie', vrijwilliger: 'V
 const sections = computed(() => [
     { id: 'general', label: 'Algemeen' },
     ...(props.qr.canManage ? [{ id: 'registrations', label: 'Registratie' }] : []),
+    ...(props.qr.canViewDonations ? [{ id: 'donations', label: 'Donaties' }] : []),
     ...(props.qr.canManageContent ? [{ id: 'website', label: 'Websitebeheer' }] : []),
 ]);
 const qrCodes = computed(() => ({
@@ -106,6 +108,9 @@ async function logout() {
 
         <section v-if="qr.canManage" id="account-panel-registrations" role="tabpanel" aria-labelledby="account-tab-registrations" :hidden="activeSection !== 'registrations'">
             <AccountRegistrations v-if="visitedSections.includes('registrations')" :endpoints="qr.endpoints" />
+        </section>
+        <section v-if="qr.canViewDonations" id="account-panel-donations" role="tabpanel" aria-labelledby="account-tab-donations" :hidden="activeSection !== 'donations'">
+            <AccountDonations v-if="visitedSections.includes('donations')" :endpoint="qr.endpoints.donations" />
         </section>
         <section v-if="qr.canManageContent" id="account-panel-website" role="tabpanel" aria-labelledby="account-tab-website" :hidden="activeSection !== 'website'">
             <ContentManagement v-if="visitedSections.includes('website')" :endpoints="qr.endpoints" :can-manage-challenge-ladder="qr.canManageChallengeLadder" />

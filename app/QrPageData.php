@@ -24,6 +24,7 @@ class QrPageData
             'pairApprove' => route('qr.pair.update'), 'pairConsume' => route('qr.pair.consume'),
             'account' => route('account.index'), 'logout' => route('logout'),
             'personalDonationTotal' => route('account.donations.total'),
+            'donations' => route('account.donations.index'),
             'attendance' => route('attendance.index'), 'attendanceStore' => route('attendance.store'),
             'requests' => route('account.requests'), 'inviteSelected' => route('account.invite-selected'),
             'content' => route('account.content.index'),
@@ -45,6 +46,7 @@ class QrPageData
             'registrationAuthorize' => route('passkeys.registration.authorize'),
             'registrationOptions' => route('passkeys.registration.options'), 'registrationStore' => route('passkeys.registration.store'),
         ], 'canManageContent' => Gate::allows('manage-event-content'),
+            'canViewDonations' => Gate::allows('view-donations'),
             'canManageChallengeLadder' => Gate::allows('manage-challenge-ladder'), ...$data];
 
         return view('site', compact('pageData'));

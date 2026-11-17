@@ -15,7 +15,7 @@ class RegistrationSchemaTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_user_timestamps_are_the_last_columns_after_registration_fields(): void
+    public function test_users_table_has_the_registration_and_discord_columns(): void
     {
         $this->assertSame([
             'id',
@@ -33,6 +33,10 @@ class RegistrationSchemaTest extends TestCase
             'is_present',
             'created_at',
             'updated_at',
+            'qr_codes_emailed_at',
+            'discord_code',
+            'discord_user_id',
+            'discord_verified_at',
         ], Schema::getColumnListing('users'));
     }
 

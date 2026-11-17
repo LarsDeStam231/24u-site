@@ -134,7 +134,6 @@ class AccountContentController extends Controller
             ...$this->sponsorAttributes($data),
             'logo_path' => $request->file('logo')?->store('sponsors', 'public'),
         ]);
-        $sponsor = Sponsor::query()->create($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor toegevoegd.'], 201);
     }
@@ -157,7 +156,6 @@ class AccountContentController extends Controller
         if ($previousLogoPath && $previousLogoPath !== $sponsor->logo_path) {
             Storage::disk('public')->delete($previousLogoPath);
         }
-        $sponsor->update($this->sponsorAttributes($data));
 
         return response()->json(['sponsor' => $this->sponsorData($sponsor), 'message' => 'Sponsor bijgewerkt.']);
     }
