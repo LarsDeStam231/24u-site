@@ -41,7 +41,7 @@ const programDays = computed(() => {
                 <div class="program-overview-copy">
                     <p class="program-eyebrow">Van aftrap tot finale</p>
                     <h2 id="schedule-title">24 uur. Eén doorlopend programma.</h2>
-                    <p>Bekijk de planning per dag en vind snel het blok dat je wilt volgen.</p>
+                    <p>Bekijk de planning voor de 24 uur en vind snel het blok dat je wilt volgen.</p>
                 </div>
                 <div class="program-overview-stats" aria-label="Programma in cijfers">
                     <div><strong>24</strong><span>uur live</span></div>
